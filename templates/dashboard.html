@@ -5,7 +5,7 @@
 
   <div class="page-header">
     <div>
-      <div class="page-title">Good {{ 'morning' if today.hour < 12 else 'afternoon' if today.hour < 18 else 'evening' }}, {{ current_user.display_name }}</div>
+      <div class="page-title">Hello, {{ current_user.display_name }}</div>
       <div class="page-sub">{{ today.strftime('%-d %B %Y') }} — C&M Portfolio Overview</div>
     </div>
     <div class="flex">

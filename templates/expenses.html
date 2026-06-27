@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}Expenses{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Expenses & Mileage</div>
+      <div class="page-sub">{{ expenses|length }} records · Total: £{{ '%.2f'|format(total) }}</div>
+    </div>
+    <a href="{{ url_for('expense_new') }}" class="btn btn-gold">+ Add Expense</a>
+  </div>
+  <div style="display:flex;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap;">
+    <select onchange="updateFilter('property', this.value)" style="width:auto;">
+      <option value="all">All properties</option>
+      {% for p in props %}
+      <option value="{{ p.id }}" {% if prop_id==p.id|string %}selected{% endif %}>{{ p.short_name }}</option>
+      {% endfor %}
+    </select>
+    <select onchange="updateFilter('director', this.value)" style="width:auto;">
+      <option value="all">All directors</option>
+      {% for d in directors %}
+      <option value="{{ d.id }}" {% if director==d.id|string %}selected{% endif %}>{{ d.first_name }}</option>
+      {% endfor %}
+    </select>
+    <select onchange="updateFilter('entity', this.value)" style="width:auto;">
+      <option value="all" {% if entity=='all' %}selected{% endif %}>All entities</option>
+      <option value="company" {% if entity=='company' %}selected{% endif %}>Company</option>
+      <option value="personal" {% if entity=='personal' %}selected{% endif %}>Personal</option>
+    </select>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Date</th><th>Type</th><th>Director</th><th>Property</th><th>From</th><th>To</th><th>Stops</th><th>Amount</th><th>Entity</th><th>Notes</th><th>✓</th></tr></thead>
+      <tbody>
+      {% for exp in expenses %}
+      <tr>
+        <td class="small muted">{{ exp.expense_date|fmt_date }}</td>
+        <td><span class="badge badge-grey" style="font-size:.62rem;">{{ exp.expense_type }}</span></td>
+        <td class="small">{{ exp.director.first_name if exp.director else '—' }}</td>
+        <td class="small">{{ exp.property.short_name if exp.property else '—' }}</td>
+        <td class="small muted">{{ (exp.from_address or '—')[:25] }}</td>
+        <td class="small muted">{{ (exp.to_address or '—')[:25] }}</td>
+        <td class="small" style="text-align:center;">{{ exp.additional_stops or '—' }}</td>
+        <td class="small">{% if exp.amount_gbp %}£{{ '%.2f'|format(exp.amount_gbp) }}{% else %}—{% endif %}</td>
+        <td><span class="badge badge-{{ 'blue' if exp.entity=='company' else 'grey' }}" style="font-size:.6rem;">{{ exp.entity }}</span></td>
+        <td class="small muted">{{ (exp.notes or '')[:40] }}</td>
+        <td style="text-align:center;">{% if exp.checked %}<span style="color:var(--sage);">✓</span>{% else %}<span class="muted">○</span>{% endif %}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="11" style="text-align:center;color:var(--muted);padding:2rem;">No expenses found.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<script>
+function updateFilter(key, val){
+  const params = new URLSearchParams(location.search);
+  params.set(key, val);
+  location.search = params.toString();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Compliance{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Compliance Dashboard</div>
+      <div class="page-sub">{{ docs|length }} active documents across all properties and vehicles</div>
+    </div>
+    <div class="flex">
+      <select onchange="location='?type='+this.value+'&entity={{ selected_entity }}'" style="width:auto;">
+        <option value="all">All document types</option>
+        {% for dt in doc_types %}
+        <option value="{{ dt }}" {% if selected_type==dt %}selected{% endif %}>{{ dt }}</option>
+        {% endfor %}
+      </select>
+      <select onchange="location='?type={{ selected_type }}&entity='+this.value" style="width:auto;">
+        <option value="all" {% if selected_entity=='all' %}selected{% endif %}>All entities</option>
+        <option value="property" {% if selected_entity=='property' %}selected{% endif %}>Properties</option>
+        <option value="vehicle" {% if selected_entity=='vehicle' %}selected{% endif %}>Vehicles</option>
+        <option value="company" {% if selected_entity=='company' %}selected{% endif %}>Company</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Status</th><th>Document</th><th>Property / Entity</th>
+        <th>Category</th><th>Issued</th><th>Expires</th>
+        <th>Days</th><th>Verified</th><th>Doc Link</th>
+      </tr></thead>
+      <tbody>
+      {% for doc, entity_name in docs %}
+      <tr>
+        <td>
+          <span class="tl-dot tl-{{ doc.traffic_light }}"></span>
+          <span class="{{ doc.traffic_class }} small">
+            {% if doc.traffic_light == 'red' %}Urgent{% elif doc.traffic_light == 'amber' %}Due soon{% elif doc.traffic_light == 'green' %}OK{% else %}—{% endif %}
+          </span>
+        </td>
+        <td style="font-weight:500;">{{ doc.doc_type }}</td>
+        <td>
+          {{ entity_name }}
+          {% if doc.entity_type == 'property' and doc.property %}
+          <br><span class="muted small">{{ doc.property.address[:40] }}</span>
+          {% endif %}
+        </td>
+        <td class="muted small">{{ doc.category or '—' }}</td>
+        <td class="muted small">{{ doc.issued_date|fmt_date }}</td>
+        <td class="{{ doc.traffic_class }} small">{{ doc.expiry_date|fmt_date }}</td>
+        <td class="small">
+          {% if doc.days_until_expiry is not none %}
+            {% if doc.days_until_expiry < 0 %}
+              <span class="doc-red">{{ doc.days_until_expiry|abs }}d ago</span>
+            {% else %}
+              {{ doc.days_until_expiry }}d
+            {% endif %}
+          {% else %}—{% endif %}
+        </td>
+        <td style="text-align:center;">
+          {% if doc.verified %}<span style="color:var(--sage);">✓</span>{% else %}<span class="muted">○</span>{% endif %}
+        </td>
+        <td>
+          {% if doc.drive_url and doc.drive_url.startswith('http') %}
+          <a href="{{ doc.drive_url }}" target="_blank" class="small drive-link">Open</a>
+          {% elif doc.notes and ('email' in doc.notes.lower() or 'online' in doc.notes.lower()) %}
+          <span class="muted small">{{ doc.notes[:20] }}</span>
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt-2 flex" style="gap:1.5rem;font-size:.75rem;color:var(--muted);">
+    <span><span class="tl-dot tl-red"></span>Overdue or due within 30 days</span>
+    <span><span class="tl-dot tl-amber"></span>Due within 90 days</span>
+    <span><span class="tl-dot tl-green"></span>More than 90 days</span>
+    <span><span class="tl-dot tl-grey"></span>No expiry date</span>
+  </div>
+</div>
+{% endblock %}

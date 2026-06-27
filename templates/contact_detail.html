@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}{{ contact.display_name }}{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div style="font-size:.78rem;color:var(--muted);margin-bottom:.3rem;"><a href="{{ url_for('contacts') }}">Contacts</a> /</div>
+      <div class="page-title">{{ contact.display_name }}</div>
+    </div>
+    <div class="flex">
+      <span class="badge badge-{{ 'blue' if contact.role=='director' else 'sage' if contact.role=='tenant' else 'gold' if contact.role=='tradesperson' else 'grey' }}">{{ contact.role }}</span>
+      {% if contact.rating == 'gold' %}<span>⭐ Gold star</span>{% endif %}
+      {% if contact.rating == 'black' %}<span style="color:var(--rose);">⚫ Black mark</span>{% endif %}
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Contact Details</div>
+      <div style="display:grid;grid-template-columns:110px 1fr;gap:.5rem .8rem;font-size:.82rem;">
+        {% if contact.mobile %}<span class="muted">Mobile</span><span>{{ contact.mobile }}</span>{% endif %}
+        {% if contact.landline %}<span class="muted">Landline</span><span>{{ contact.landline }}</span>{% endif %}
+        {% if contact.email %}<span class="muted">Email</span><a href="mailto:{{ contact.email }}">{{ contact.email }}</a>{% endif %}
+        {% if contact.speciality %}<span class="muted">Speciality</span><span>{{ contact.speciality }}</span>{% endif %}
+        {% if contact.region %}<span class="muted">Region</span><span>{{ contact.region }}</span>{% endif %}
+      </div>
+      {% if contact.notes %}
+      <div class="sep"></div>
+      <div class="card-title">Notes</div>
+      <div style="font-size:.82rem;line-height:1.7;white-space:pre-wrap;">{{ contact.notes }}</div>
+      {% endif %}
+    </div>
+
+    <div>
+      {% if linked %}
+      <div class="card mb-2">
+        <div class="card-title">Linked Properties</div>
+        {% for prop, link in linked %}
+        <div style="padding:.35rem 0;border-bottom:1px solid var(--border);font-size:.82rem;">
+          <a href="{{ url_for('property_detail', prop_id=prop.id) }}">{{ prop.short_name }}</a>
+          <span class="badge badge-grey" style="font-size:.6rem;margin-left:.3rem;">{{ link.role or '—' }}</span>
+          <div class="muted small">{{ prop.address[:50] }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if tasks %}
+      <div class="card mb-2">
+        <div class="card-title">Recent Tasks ({{ tasks|length }})</div>
+        {% for task in tasks[:8] %}
+        <div style="padding:.35rem 0;border-bottom:1px solid var(--border);font-size:.8rem;">
+          <span class="badge {{ task.status_class }}" style="font-size:.6rem;margin-right:.3rem;">{{ task.status.replace('_',' ') }}</span>
+          <a href="{{ url_for('task_detail', task_id=task.id) }}">{{ task.title[:50] }}</a>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

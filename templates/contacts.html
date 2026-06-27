@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Contacts{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Contact Directory</div>
+      <div class="page-sub">{{ contacts|length }} contacts</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:.6rem;margin-bottom:1rem;">
+    {% for r, label in [('all','All'),('director','Directors'),('tenant','Tenants'),('tradesperson','Tradespeople'),('other','Other')] %}
+    <a href="{{ url_for('contacts', role=r) }}" class="btn btn-sm {{ 'btn-primary' if role==r else 'btn-ghost' }}">{{ label }}</a>
+    {% endfor %}
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Name</th><th>Role</th><th>Speciality</th><th>Region</th><th>Mobile</th><th>Email</th><th>Rating</th></tr></thead>
+      <tbody>
+      {% for contact in contacts %}
+      <tr>
+        <td><a href="{{ url_for('contact_detail', contact_id=contact.id) }}" style="font-weight:500;">{{ contact.display_name }}</a></td>
+        <td><span class="badge badge-{{ 'blue' if contact.role=='director' else 'sage' if contact.role=='tenant' else 'gold' if contact.role=='tradesperson' else 'grey' }}">{{ contact.role }}</span></td>
+        <td class="muted small">{{ contact.speciality or '—' }}</td>
+        <td class="muted small">{{ contact.region or '—' }}</td>
+        <td class="small">{{ contact.mobile or '—' }}</td>
+        <td class="small">{{ contact.email or '—' }}</td>
+        <td>
+          {% if contact.rating == 'gold' %}<span title="Gold star">⭐ Gold</span>
+          {% elif contact.rating == 'black' %}<span title="Black mark" style="color:var(--rose);">⚫ Black mark</span>
+          {% else %}<span class="muted">—</span>{% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem;">No contacts found.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

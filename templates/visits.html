@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}Visits{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Inspection Visits</div>
+      <div class="page-sub">{{ visits|length }} visits shown</div>
+    </div>
+    <a href="{{ url_for('visit_new') }}" class="btn btn-gold">+ Log Visit</a>
+  </div>
+  <div style="margin-bottom:1rem;">
+    <select onchange="location='{{ url_for('visits') }}?property='+this.value" style="width:auto;">
+      <option value="all">All properties</option>
+      {% for p in props %}
+      <option value="{{ p.id }}" {% if prop_id==p.id|string %}selected{% endif %}>{{ p.short_name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Date</th><th>Property</th><th>Type</th><th>Visited by</th><th>Notes</th><th>Checked</th></tr></thead>
+      <tbody>
+      {% for visit in visits %}
+      <tr>
+        <td class="small">{{ visit.visit_date|fmt_date }}</td>
+        <td>{% if visit.property %}<a href="{{ url_for('property_detail', prop_id=visit.property_id) }}">{{ visit.property.short_name }}</a>{% else %}—{% endif %}</td>
+        <td><span class="badge badge-{{ 'blue' if visit.visit_type=='routine' else 'gold' }}">{{ visit.visit_type }}</span></td>
+        <td class="small">{{ visit.visited_by.first_name if visit.visited_by else '—' }}</td>
+        <td class="small muted">{{ (visit.notes or '')[:80] }}{% if visit.notes and visit.notes|length > 80 %}…{% endif %}</td>
+        <td style="text-align:center;">{% if visit.checked %}<span style="color:var(--sage);">✓</span>{% else %}<span class="muted">○</span>{% endif %}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem;">No visits found.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

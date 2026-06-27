@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Vault{% endblock %}
+{% block content %}
+<div class="page" style="max-width:700px;">
+  <div class="page-header">
+    <div class="page-title">🔐 Secure Vault</div>
+    <div class="page-sub">Encrypted credential and sensitive data storage</div>
+  </div>
+
+  <div class="card" style="border-left:3px solid var(--gold);">
+    <div class="card-title">Coming Soon</div>
+    <p style="font-size:.85rem;line-height:1.7;color:var(--muted);">
+      The Vault will provide encrypted storage for sensitive credentials and data that should not appear in regular property records, including:
+    </p>
+    <ul style="margin:.8rem 0 .8rem 1.2rem;font-size:.85rem;line-height:1.9;color:var(--muted);">
+      <li>HMRC credentials and user IDs</li>
+      <li>Companies House authentication codes</li>
+      <li>Property alarm codes and access codes</li>
+      <li>Mortgage account numbers and references</li>
+      <li>Banking credentials and account details</li>
+      <li>Tenant deposit protection scheme credentials</li>
+    </ul>
+    <p style="font-size:.82rem;color:var(--muted);">
+      Data redacted from AppSheet migration is flagged <code>[REDACTED — see Vault]</code> in notes. 
+      Once the Vault is implemented, these can be entered securely.
+    </p>
+  </div>
+
+  <div class="card mt-2" style="text-align:center;padding:2rem;color:var(--muted);">
+    <div style="font-size:2rem;margin-bottom:.5rem;">🔒</div>
+    <div style="font-weight:600;">Vault not yet implemented</div>
+    <div class="small mt-1">Planned for a future release. Credentials are currently held outside this system.</div>
+  </div>
+</div>
+{% endblock %}

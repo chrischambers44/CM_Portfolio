@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block title %}Tasks{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Task Manager</div>
+      <div class="page-sub">{{ tasks|length }} tasks shown</div>
+    </div>
+    <a href="{{ url_for('task_new') }}" class="btn btn-gold">+ New Task</a>
+  </div>
+
+  <!-- FILTERS -->
+  <div style="display:flex;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap;">
+    {% for s, label in [('open','Open'),('not_started','Not started'),('in_progress','In progress'),('complete','Complete'),('all','All')] %}
+    <a href="{{ url_for('tasks', status=s, property=prop_id, assigned=assigned) }}"
+       class="btn btn-sm {{ 'btn-primary' if status==s else 'btn-ghost' }}">{{ label }}</a>
+    {% endfor %}
+    <select onchange="location='{{ url_for('tasks') }}?status={{ status }}&property='+this.value+'&assigned={{ assigned }}'" style="width:auto;">
+      <option value="all">All properties</option>
+      {% for p in props %}
+      <option value="{{ p.id }}" {% if prop_id==p.id|string %}selected{% endif %}>{{ p.short_name }}</option>
+      {% endfor %}
+    </select>
+    <select onchange="location='{{ url_for('tasks') }}?status={{ status }}&property={{ prop_id }}&assigned='+this.value" style="width:auto;">
+      <option value="all">All directors</option>
+      {% for d in directors %}
+      <option value="{{ d.id }}" {% if assigned==d.id|string %}selected{% endif %}>{{ d.first_name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Status</th><th>Task</th><th>Property</th>
+        <th>Assigned</th><th>Due</th><th>Actions</th>
+      </tr></thead>
+      <tbody>
+      {% for task in tasks %}
+      <tr>
+        <td><span class="badge {{ task.status_class }}">{{ task.status.replace('_',' ') }}</span></td>
+        <td>
+          <a href="{{ url_for('task_detail', task_id=task.id) }}" style="font-weight:500;">
+            {{ task.title[:60] }}{% if task.title|length > 60 %}…{% endif %}
+          </a>
+          {% if task.is_overdue %}<span class="badge badge-rose" style="font-size:.6rem;margin-left:.3rem;">Overdue</span>{% endif %}
+        </td>
+        <td class="muted small">{{ task.property.short_name if task.property else '—' }}</td>
+        <td class="muted small">{{ task.assigned_to.first_name if task.assigned_to else '—' }}</td>
+        <td class="small {{ 'doc-red' if task.is_overdue else 'muted' }}">{{ task.due_date|fmt_date }}</td>
+        <td>
+          <div class="flex">
+            <a href="{{ url_for('task_edit', task_id=task.id) }}" class="btn btn-ghost btn-sm">Edit</a>
+            {% if task.status != 'complete' %}
+            <form method="POST" action="{{ url_for('task_status', task_id=task.id) }}" style="display:inline;">
+              <input type="hidden" name="status" value="complete">
+              <button class="btn btn-ghost btn-sm" style="color:var(--sage);">✓ Done</button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem;">No tasks found.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

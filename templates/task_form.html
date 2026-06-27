@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit Task' if task else 'New Task' }}{% endblock %}
+{% block content %}
+<div class="page" style="max-width:700px;">
+  <div class="page-header">
+    <div class="page-title">{{ 'Edit Task' if task else 'New Task' }}</div>
+  </div>
+  <div class="card">
+    <form method="POST">
+      <div class="form-group">
+        <label>Title *</label>
+        <input type="text" name="title" value="{{ task.title if task else '' }}" required>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>Property</label>
+          <select name="property_id">
+            <option value="">— None —</option>
+            {% for p in props %}
+            <option value="{{ p.id }}" {% if task and task.property_id==p.id %}selected{% elif request.args.get('property_id')==p.id|string %}selected{% endif %}>{{ p.short_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Assigned to</label>
+          <select name="assigned_to_id">
+            <option value="">— Unassigned —</option>
+            {% for d in directors %}
+            <option value="{{ d.id }}" {% if task and task.assigned_to_id==d.id %}selected{% endif %}>{{ d.display_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select name="status">
+            {% for s, label in [('not_started','Not started'),('in_progress','In progress'),('complete','Complete')] %}
+            <option value="{{ s }}" {% if task and task.status==s %}selected{% elif not task and s=='not_started' %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Priority (0–5)</label>
+          <input type="number" name="priority" min="0" max="5" value="{{ task.priority if task else 0 }}">
+        </div>
+        <div class="form-group">
+          <label>Due Date</label>
+          <input type="date" name="due_date" value="{{ task.due_date.isoformat() if task and task.due_date else '' }}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea name="notes" rows="6">{{ task.notes if task else '' }}</textarea>
+      </div>
+      <div class="flex" style="justify-content:flex-end;gap:.6rem;">
+        <a href="{{ url_for('tasks') }}" class="btn btn-ghost">Cancel</a>
+        <button type="submit" class="btn btn-gold">{{ 'Save Changes' if task else 'Create Task' }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

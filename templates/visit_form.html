@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Log Visit{% endblock %}
+{% block content %}
+<div class="page" style="max-width:700px;">
+  <div class="page-header"><div class="page-title">Log Inspection Visit</div></div>
+  <div class="card">
+    <form method="POST">
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>Property *</label>
+          <select name="property_id" required>
+            <option value="">— Select property —</option>
+            {% for p in props %}
+            <option value="{{ p.id }}" {% if request.args.get('property_id')==p.id|string %}selected{% endif %}>{{ p.short_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Visited by</label>
+          <select name="visited_by_id">
+            <option value="">— Select —</option>
+            {% for d in directors %}
+            <option value="{{ d.id }}">{{ d.display_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Visit Type</label>
+          <select name="visit_type">
+            <option value="routine">Routine</option>
+            <option value="special">Special</option>
+            <option value="emergency">Emergency</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Visit Date *</label>
+          <input type="date" name="visit_date" value="{{ today.isoformat() }}" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea name="notes" rows="6" placeholder="Inspection findings, tasks raised, tenant conversation…"></textarea>
+      </div>
+      <div class="form-group">
+        <label><input type="checkbox" name="checked" style="width:auto;margin-right:.4rem;"> Report checked / verified</label>
+      </div>
+      <div class="flex" style="justify-content:flex-end;gap:.6rem;">
+        <a href="{{ url_for('visits') }}" class="btn btn-ghost">Cancel</a>
+        <button type="submit" class="btn btn-gold">Save Visit</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

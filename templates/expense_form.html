@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block title %}Add Expense{% endblock %}
+{% block content %}
+<div class="page" style="max-width:700px;">
+  <div class="page-header"><div class="page-title">Add Expense / Mileage</div></div>
+  <div class="card">
+    <form method="POST">
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>Type</label>
+          <select name="expense_type">
+            <option value="mileage">Mileage</option>
+            <option value="maintenance">Maintenance Sundries</option>
+            <option value="food">Food</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Date *</label>
+          <input type="date" name="expense_date" value="{{ today.isoformat() }}" required>
+        </div>
+        <div class="form-group">
+          <label>Director</label>
+          <select name="director_id">
+            <option value="">— Select —</option>
+            {% for d in directors %}
+            <option value="{{ d.id }}">{{ d.display_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Property</label>
+          <select name="property_id">
+            <option value="">— None / General —</option>
+            {% for p in props %}
+            <option value="{{ p.id }}">{{ p.short_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group form-full">
+          <label>From Address</label>
+          <input type="text" name="from_address" placeholder="e.g. 7 Meredith Close, Halstock">
+        </div>
+        <div class="form-group form-full">
+          <label>To Address</label>
+          <input type="text" name="to_address" placeholder="e.g. 180 Sherborne Rd, Yeovil">
+        </div>
+        <div class="form-group">
+          <label>Additional Stops</label>
+          <input type="number" name="additional_stops" value="0" min="0">
+        </div>
+        <div class="form-group">
+          <label>Amount (£)</label>
+          <input type="number" name="amount_gbp" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label>Entity</label>
+          <select name="entity">
+            <option value="company">C & M Ltd</option>
+            <option value="personal">Personal</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea name="notes" rows="3" placeholder="Description of journey or expense…"></textarea>
+      </div>
+      <div class="form-group">
+        <label><input type="checkbox" name="checked" style="width:auto;margin-right:.4rem;"> Checked / approved</label>
+      </div>
+      <div class="flex" style="justify-content:flex-end;gap:.6rem;">
+        <a href="{{ url_for('expenses') }}" class="btn btn-ghost">Cancel</a>
+        <button type="submit" class="btn btn-gold">Save Expense</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

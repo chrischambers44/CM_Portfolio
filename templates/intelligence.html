@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}Portfolio Intelligence{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="page-header">
+    <div class="page-title">Portfolio Intelligence</div>
+    <div class="page-sub">Financial analysis · LTV projections · Acquisition pipeline</div>
+  </div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;font-size:.82rem;color:var(--muted);">
+    ℹ The EstateIQ financial intelligence tool is available as a standalone application. 
+    <a href="https://chrash-portfolio.netlify.app" target="_blank">Open EstateIQ →</a>
+    &nbsp;·&nbsp; 
+    In a future release this will be embedded directly with live property data from this system.
+  </div>
+
+  <!-- QUICK FINANCIAL SUMMARY from DB -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem;">
+    {% for prop in props %}
+    <div class="card" style="border-left:3px solid var(--blue);">
+      <div style="font-weight:600;font-size:.85rem;margin-bottom:.4rem;">{{ prop.short_name }}</div>
+      <div class="muted small">{{ prop.address[:40] }}</div>
+      <div class="mt-1">
+        <span class="pill pill-{{ 'company' if prop.ownership=='company' else 'joint' if prop.ownership=='joint' else 'personal' }}">{{ prop.ownership.replace('_',' ') }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="card" style="text-align:center;padding:3rem;color:var(--muted);">
+    <div style="font-size:1.5rem;margin-bottom:.8rem;">📊</div>
+    <div style="font-weight:600;margin-bottom:.4rem;">Full EstateIQ Integration Coming Soon</div>
+    <div class="small">LTV charts, projections, pipeline analysis and AI insights will be embedded here,<br>pulling live data from your property register.</div>
+    <div class="mt-2">
+      <a href="https://chrash-portfolio.netlify.app" target="_blank" class="btn btn-gold">Open EstateIQ →</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

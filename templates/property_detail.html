@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+{% block title %}{{ prop.short_name }}{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div style="font-size:.78rem;color:var(--muted);margin-bottom:.3rem;"><a href="{{ url_for('properties') }}">Properties</a> /</div>
+      <div class="page-title">{{ prop.short_name }}</div>
+      <div class="page-sub">{{ prop.address }}</div>
+    </div>
+    <div class="flex">
+      <span class="pill pill-{{ 'company' if prop.ownership=='company' else 'joint' if prop.ownership=='joint' else 'personal' }}">{{ prop.ownership.replace('_',' ') }}</span>
+      <span class="badge badge-{{ 'blue' if prop.property_type=='rental' else 'grey' }}">{{ prop.property_type }}</span>
+      <a href="{{ url_for('task_new') }}?property_id={{ prop.id }}" class="btn btn-gold">+ Task</a>
+      <a href="{{ url_for('visit_new') }}?property_id={{ prop.id }}" class="btn btn-ghost">+ Visit</a>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:1rem;">
+
+    <!-- ACTIVE DOCUMENTS -->
+    <div class="card">
+      <div class="flex-between mb-2">
+        <div class="card-title" style="margin:0;">Active Documents</div>
+        <a href="{{ url_for('compliance') }}?entity=property" class="small">All compliance →</a>
+      </div>
+      {% if active_docs %}
+      <div style="display:flex;flex-direction:column;gap:.4rem;">
+        {% for doc in active_docs %}
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:.4rem .6rem;border-radius:5px;background:var(--paper);border:1px solid var(--border);font-size:.8rem;">
+          <div class="flex" style="gap:.5rem;">
+            <span class="tl-dot tl-{{ doc.traffic_light }}"></span>
+            <span style="font-weight:500;">{{ doc.doc_type }}</span>
+            {% if doc.notes %}<span class="muted small" title="{{ doc.notes }}">ℹ</span>{% endif %}
+          </div>
+          <div class="flex" style="gap:.6rem;">
+            <span class="{{ doc.traffic_class }} small">{{ doc.expiry_date|fmt_date if doc.expiry_date else '—' }}</span>
+            {% if doc.expiry_date %}<span class="muted small">({{ doc.expiry_date|days_label }})</span>{% endif %}
+            {% if doc.drive_url and doc.drive_url.startswith('http') %}
+            <a href="{{ doc.drive_url }}" target="_blank" class="small" title="Open document">📎</a>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="muted small">No active documents recorded.</div>
+      {% endif %}
+    </div>
+
+    <!-- OPEN TASKS -->
+    <div class="card">
+      <div class="flex-between mb-2">
+        <div class="card-title" style="margin:0;">Open Tasks ({{ open_tasks|length }})</div>
+        <a href="{{ url_for('task_new') }}" class="btn btn-ghost btn-sm">+ New</a>
+      </div>
+      {% if open_tasks %}
+      {% for task in open_tasks %}
+      <div style="padding:.5rem 0;border-bottom:1px solid var(--border);font-size:.8rem;">
+        <div class="flex-between">
+          <div>
+            <span class="badge {{ task.status_class }}" style="font-size:.6rem;margin-right:.4rem;">{{ task.status.replace('_',' ') }}</span>
+            <a href="{{ url_for('task_detail', task_id=task.id) }}">{{ task.title[:55] }}{% if task.title|length > 55 %}…{% endif %}</a>
+          </div>
+          {% if task.due_date %}
+          <span class="small {{ 'doc-red' if task.is_overdue else 'muted' }}">{{ task.due_date|fmt_date }}</span>
+          {% endif %}
+        </div>
+        {% if task.assigned_to %}
+        <div class="muted small mt-1">Assigned: {{ task.assigned_to.display_name }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+      {% else %}
+      <div class="muted small">No open tasks. 🎉</div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <div class="grid-2" style="margin-bottom:1rem;">
+
+    <!-- VISITS -->
+    <div class="card">
+      <div class="flex-between mb-2">
+        <div class="card-title" style="margin:0;">Recent Visits</div>
+        <a href="{{ url_for('visit_new') }}" class="btn btn-ghost btn-sm">+ Log</a>
+      </div>
+      {% if visits %}
+      {% for visit in visits[:8] %}
+      <div style="padding:.45rem 0;border-bottom:1px solid var(--border);font-size:.8rem;">
+        <div class="flex-between">
+          <div>
+            <span class="badge badge-{{ 'blue' if visit.visit_type=='routine' else 'gold' }}" style="font-size:.6rem;margin-right:.3rem;">{{ visit.visit_type }}</span>
+            {% if visit.visited_by %}<strong>{{ visit.visited_by.first_name }}</strong>{% endif %}
+            {% if visit.notes %}<span class="muted small"> — {{ visit.notes[:60] }}{% if visit.notes|length > 60 %}…{% endif %}</span>{% endif %}
+          </div>
+          <span class="muted small">{{ visit.visit_date|fmt_date }}</span>
+        </div>
+      </div>
+      {% endfor %}
+      {% else %}
+      <div class="muted small">No visits recorded.</div>
+      {% endif %}
+    </div>
+
+    <!-- LINKED CONTACTS -->
+    <div class="card">
+      <div class="card-title">Linked Contacts</div>
+      {% if linked_contacts %}
+      {% for contact, link in linked_contacts %}
+      <div style="padding:.45rem 0;border-bottom:1px solid var(--border);font-size:.8rem;">
+        <div class="flex-between">
+          <div>
+            <a href="{{ url_for('contact_detail', contact_id=contact.id) }}">{{ contact.display_name }}</a>
+            <span class="badge badge-grey" style="font-size:.6rem;margin-left:.3rem;">{{ link.role or contact.role }}</span>
+            {% if contact.rating == 'gold' %}<span title="Gold star tradesperson">⭐</span>{% endif %}
+            {% if contact.rating == 'black' %}<span title="Black mark">⚫</span>{% endif %}
+          </div>
+          <div class="muted small">{{ contact.mobile or contact.email or '' }}</div>
+        </div>
+        {% if contact.speciality %}<div class="muted small">{{ contact.speciality }}</div>{% endif %}
+      </div>
+      {% endfor %}
+      {% else %}
+      <div class="muted small">No contacts linked to this property.</div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- NOTES -->
+  {% if prop.notes %}
+  <div class="card mb-2">
+    <div class="card-title">Notes</div>
+    <div style="font-size:.82rem;line-height:1.7;white-space:pre-wrap;color:var(--ink);">{{ prop.notes }}</div>
+  </div>
+  {% endif %}
+
+  <!-- ARCHIVED DOCUMENTS -->
+  {% if archive_docs %}
+  <div class="card mb-2">
+    <div class="card-title">Document Archive</div>
+    <div class="table-wrap" style="box-shadow:none;border:none;">
+      <table>
+        <thead><tr><th>Type</th><th>Issued</th><th>Expired</th><th>Notes</th><th>Doc</th></tr></thead>
+        <tbody>
+        {% for doc in archive_docs %}
+        <tr>
+          <td><span class="badge badge-grey" style="font-size:.62rem;">{{ doc.doc_type }}</span></td>
+          <td class="small muted">{{ doc.issued_date|fmt_date }}</td>
+          <td class="small muted">{{ doc.expiry_date|fmt_date }}</td>
+          <td class="small muted">{{ (doc.notes or '')[:60] }}{% if doc.notes and doc.notes|length > 60 %}…{% endif %}</td>
+          <td>{% if doc.drive_url and doc.drive_url.startswith('http') %}<a href="{{ doc.drive_url }}" target="_blank" class="small">📎</a>{% endif %}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- EXPENSES -->
+  {% if expenses %}
+  <div class="card">
+    <div class="card-title">Recent Expenses</div>
+    <div class="table-wrap" style="box-shadow:none;border:none;">
+      <table>
+        <thead><tr><th>Date</th><th>Type</th><th>Director</th><th>From</th><th>To</th><th>Amount</th><th>Notes</th></tr></thead>
+        <tbody>
+        {% for exp in expenses %}
+        <tr>
+          <td class="small muted">{{ exp.expense_date|fmt_date }}</td>
+          <td><span class="badge badge-grey" style="font-size:.62rem;">{{ exp.expense_type }}</span></td>
+          <td class="small">{{ exp.director.first_name if exp.director else '—' }}</td>
+          <td class="small muted">{{ (exp.from_address or '—')[:30] }}</td>
+          <td class="small muted">{{ (exp.to_address or '—')[:30] }}</td>
+          <td class="small">{% if exp.amount_gbp %}£{{ '%.2f'|format(exp.amount_gbp) }}{% else %}—{% endif %}</td>
+          <td class="small muted">{{ (exp.notes or '')[:40] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="mt-1"><a href="{{ url_for('expenses') }}?property={{ prop.id }}" class="small">View all expenses for this property →</a></div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

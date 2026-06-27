@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Vehicles{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="page-header">
+    <div class="page-title">Vehicles</div>
+  </div>
+  {% for veh in vehicles %}
+  <div class="card mb-2">
+    <div class="flex-between">
+      <div>
+        <div style="font-weight:700;font-size:1rem;">{{ veh.registration }}</div>
+        <div class="muted small">{{ veh.make }} {{ veh.model }}{% if veh.year %} ({{ veh.year }}){% endif %}</div>
+      </div>
+      <span class="pill pill-{{ 'company' if veh.ownership=='company' else 'personal' }}">{{ veh.ownership.replace('_',' ') }}</span>
+    </div>
+    {% if veh.active_documents %}
+    <div class="sep"></div>
+    <div style="display:flex;flex-direction:column;gap:.35rem;">
+      {% for doc in veh.active_documents %}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:.35rem .6rem;border-radius:5px;background:var(--paper);border:1px solid var(--border);font-size:.8rem;">
+        <div class="flex">
+          <span class="tl-dot tl-{{ doc.traffic_light }}"></span>
+          <span style="font-weight:500;">{{ doc.doc_type }}</span>
+        </div>
+        <div class="flex">
+          <span class="{{ doc.traffic_class }} small">{{ doc.expiry_date|fmt_date }}</span>
+          {% if doc.drive_url and doc.drive_url.startswith('http') %}<a href="{{ doc.drive_url }}" target="_blank" class="small">📎</a>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="card" style="text-align:center;padding:2rem;color:var(--muted);">No vehicles registered. Run the migration to import from AppSheet.</div>
+  {% endfor %}
+</div>
+{% endblock %}

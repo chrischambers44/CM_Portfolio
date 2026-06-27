@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}{{ task.title[:40] }}{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div style="font-size:.78rem;color:var(--muted);margin-bottom:.3rem;"><a href="{{ url_for('tasks') }}">Tasks</a> /</div>
+      <div class="page-title">{{ task.title }}</div>
+      {% if task.property %}<div class="page-sub">{{ task.property.short_name }} — {{ task.property.address }}</div>{% endif %}
+    </div>
+    <div class="flex">
+      <span class="badge {{ task.status_class }}" style="font-size:.75rem;">{{ task.status.replace('_',' ').title() }}</span>
+      <a href="{{ url_for('task_edit', task_id=task.id) }}" class="btn btn-ghost">Edit</a>
+      {% if task.status != 'complete' %}
+      <form method="POST" action="{{ url_for('task_status', task_id=task.id) }}">
+        <input type="hidden" name="status" value="complete">
+        <button class="btn btn-gold">✓ Mark Complete</button>
+      </form>
+      {% elif task.status == 'complete' %}
+      <form method="POST" action="{{ url_for('task_status', task_id=task.id) }}">
+        <input type="hidden" name="status" value="in_progress">
+        <button class="btn btn-ghost">↩ Reopen</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <div class="card mb-2">
+        <div class="card-title">Details</div>
+        <div style="display:grid;grid-template-columns:120px 1fr;gap:.5rem .8rem;font-size:.82rem;">
+          <span class="muted">Status</span><span class="badge {{ task.status_class }}">{{ task.status.replace('_',' ') }}</span>
+          <span class="muted">Property</span><span>{% if task.property %}<a href="{{ url_for('property_detail', prop_id=task.property_id) }}">{{ task.property.short_name }}</a>{% else %}—{% endif %}</span>
+          <span class="muted">Assigned to</span><span>{% if task.assigned_to %}<a href="{{ url_for('contact_detail', contact_id=task.assigned_to_id) }}">{{ task.assigned_to.display_name }}</a>{% else %}—{% endif %}</span>
+          <span class="muted">Priority</span><span>{{ '★' * task.priority if task.priority else '—' }}</span>
+          <span class="muted">Created</span><span>{{ task.created_date|fmt_date }}</span>
+          <span class="muted">Due</span><span class="{{ 'doc-red' if task.is_overdue else '' }}">{{ task.due_date|fmt_date }}{% if task.is_overdue %} ⚠ Overdue{% endif %}</span>
+          <span class="muted">Est. days</span><span>{{ task.estimated_days or '—' }}</span>
+        </div>
+      </div>
+
+      {% if task.images.count() > 0 %}
+      <div class="card">
+        <div class="card-title">Images</div>
+        {% for img in task.images %}
+        <div class="small muted" style="padding:.3rem 0;border-bottom:1px solid var(--border);">📷 {{ img.image_path }}</div>
+        {% endfor %}
+        <div class="small muted mt-1">Images are stored in AppSheet media storage. Paths preserved for reference.</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-title">Notes & History</div>
+      {% if task.notes %}
+      <div style="font-size:.83rem;line-height:1.75;white-space:pre-wrap;color:var(--ink);">{{ task.notes }}</div>
+      {% else %}
+      <div class="muted small">No notes recorded.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

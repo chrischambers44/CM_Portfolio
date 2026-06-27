@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Properties{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Property Register</div>
+      <div class="page-sub">{{ props|length }} properties shown</div>
+    </div>
+    <div class="flex">
+      <select onchange="location='?type='+this.value+'&ownership={{ ownership }}'" style="width:auto;">
+        <option value="all" {% if ptype=='all' %}selected{% endif %}>All types</option>
+        <option value="rental" {% if ptype=='rental' %}selected{% endif %}>Rental</option>
+        <option value="personal" {% if ptype=='personal' %}selected{% endif %}>Personal</option>
+        <option value="company" {% if ptype=='company' %}selected{% endif %}>Company</option>
+      </select>
+      <select onchange="location='?type={{ ptype }}&ownership='+this.value" style="width:auto;">
+        <option value="all" {% if ownership=='all' %}selected{% endif %}>All ownership</option>
+        <option value="company" {% if ownership=='company' %}selected{% endif %}>Company</option>
+        <option value="joint" {% if ownership=='joint' %}selected{% endif %}>Joint</option>
+        <option value="personal_chris" {% if ownership=='personal_chris' %}selected{% endif %}>Chris personal</option>
+        <option value="personal_ash" {% if ownership=='personal_ash' %}selected{% endif %}>Ash personal</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Property</th><th>Type</th><th>Ownership</th><th>Region</th>
+        <th>Overdue Docs</th><th>Open Tasks</th><th>Action</th>
+      </tr></thead>
+      <tbody>
+      {% for prop in props %}
+      <tr>
+        <td>
+          <div style="font-weight:600;">{{ prop.short_name }}</div>
+          <div class="muted small">{{ prop.address }}</div>
+        </td>
+        <td><span class="badge badge-{{ 'blue' if prop.property_type=='rental' else 'grey' }}">{{ prop.property_type }}</span></td>
+        <td><span class="pill pill-{{ 'company' if prop.ownership=='company' else 'joint' if prop.ownership=='joint' else 'personal' }}">{{ prop.ownership.replace('_',' ') }}</span></td>
+        <td class="muted small">{{ prop.region or '—' }}</td>
+        <td>
+          {% if prop.overdue_documents %}
+          <span class="badge badge-rose">{{ prop.overdue_documents|length }}</span>
+          {% else %}<span class="doc-green">✓</span>{% endif %}
+        </td>
+        <td>
+          {% if prop.open_tasks %}
+          <span class="badge badge-gold">{{ prop.open_tasks|length }}</span>
+          {% else %}<span class="muted">—</span>{% endif %}
+        </td>
+        <td><a href="{{ url_for('property_detail', prop_id=prop.id) }}" class="btn btn-ghost btn-sm">View →</a></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C&M Portfolio — Sign In</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#f5f2ed;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+
+.login-wrap{width:100%;max-width:480px;padding:2rem;}
+
+.brand{text-align:center;margin-bottom:2.5rem;}
+.brand h1{font-size:1.8rem;font-weight:800;letter-spacing:.04em;color:#e8c96a;}
+.brand p{font-size:.82rem;color:#7a7265;margin-top:.4rem;}
+
+/* PROFILE PICKER */
+.profiles{display:flex;gap:1.5rem;justify-content:center;margin-bottom:2rem;flex-wrap:wrap;}
+.profile-card{display:flex;flex-direction:column;align-items:center;gap:.7rem;cursor:pointer;padding:.8rem;border-radius:8px;border:2px solid transparent;transition:all .2s;text-decoration:none;}
+.profile-card:hover{border-color:#b5862a;background:rgba(181,134,42,.1);}
+.profile-card.selected{border-color:#e8c96a;background:rgba(232,201,106,.1);}
+.avatar{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:800;color:white;letter-spacing:.02em;flex-shrink:0;}
+.profile-name{font-size:.85rem;font-weight:600;color:#f5f2ed;text-align:center;}
+.profile-role{font-size:.7rem;color:#7a7265;text-align:center;}
+
+/* PASSWORD FORM */
+.pw-form{background:#1e2230;border:1px solid #2a2d3a;border-radius:10px;padding:1.8rem;display:none;}
+.pw-form.show{display:block;}
+.pw-header{display:flex;align-items:center;gap:.8rem;margin-bottom:1.2rem;}
+.pw-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;color:white;flex-shrink:0;}
+.pw-name{font-size:.95rem;font-weight:600;}
+.pw-sub{font-size:.72rem;color:#7a7265;margin-top:.1rem;}
+.pw-input-wrap{position:relative;margin-bottom:1rem;}
+.pw-input{width:100%;padding:.7rem 2.5rem .7rem .9rem;border:1px solid #3a3d4a;border-radius:6px;background:#0f1117;color:#f5f2ed;font-size:.9rem;outline:none;transition:border-color .15s;font-family:inherit;}
+.pw-input:focus{border-color:#b5862a;}
+.pw-eye{position:absolute;right:.7rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#7a7265;font-size:.9rem;padding:.2rem;}
+.pw-eye:hover{color:#f5f2ed;}
+.error{font-size:.75rem;color:#e74c3c;margin-bottom:.8rem;padding:.4rem .6rem;background:rgba(231,76,60,.1);border-radius:4px;}
+.btn-signin{width:100%;padding:.7rem;background:#b5862a;border:none;border-radius:6px;color:white;font-size:.88rem;font-weight:600;cursor:pointer;transition:background .15s;font-family:inherit;}
+.btn-signin:hover{background:#c99530;}
+.btn-back{display:block;text-align:center;margin-top:.8rem;font-size:.75rem;color:#7a7265;cursor:pointer;background:none;border:none;font-family:inherit;width:100%;}
+.btn-back:hover{color:#f5f2ed;}
+
+.footer{margin-top:2rem;text-align:center;font-size:.7rem;color:#3a3d4a;}
+</style>
+</head>
+<body>
+
+<div class="login-wrap">
+  <div class="brand">
+    <h1>C&M Portfolio</h1>
+    <p>Chambers &amp; Morgan Property Management</p>
+  </div>
+
+  {% if not selected_user %}
+  <!-- PROFILE PICKER -->
+  <div class="profiles">
+    {% for user in users %}
+    <a href="{{ url_for('login_select', user_id=user.id) }}" class="profile-card">
+      <div class="avatar" style="background:{{ user.avatar_colour }}">{{ user.avatar_initials }}</div>
+      <div class="profile-name">{{ user.display_name }}</div>
+      <div class="profile-role">{{ user.role.title() }}</div>
+    </a>
+    {% endfor %}
+  </div>
+  <div class="footer">Select your profile to continue</div>
+
+  {% else %}
+  <!-- PASSWORD FORM -->
+  <div class="pw-form show">
+    <div class="pw-header">
+      <div class="pw-avatar" style="background:{{ selected_user.avatar_colour }}">{{ selected_user.avatar_initials }}</div>
+      <div>
+        <div class="pw-name">{{ selected_user.display_name }}</div>
+        <div class="pw-sub">Enter your password to continue</div>
+      </div>
+    </div>
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+    <form method="POST" action="{{ url_for('login') }}">
+      <input type="hidden" name="user_id" value="{{ selected_user.id }}">
+      <div class="pw-input-wrap">
+        <input type="password" name="password" id="pw" class="pw-input" placeholder="Password" autofocus autocomplete="current-password">
+        <button type="button" class="pw-eye" onclick="togglePw()">👁</button>
+      </div>
+      <button type="submit" class="btn-signin">Sign In</button>
+    </form>
+    <a href="{{ url_for('login') }}" class="btn-back">← Back to profiles</a>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function togglePw(){
+  const i=document.getElementById('pw');
+  i.type=i.type==='password'?'text':'password';
+}
+</script>
+</body>
+</html>

@@ -428,9 +428,158 @@ def contact_detail(contact_id):
 
 # ─── VEHICLES ─────────────────────────────────────────────────────────────────
 
-@app.route('/vehicles')
+@app.route('/properties/<int:prop_id>/edit', methods=['GET', 'POST'])
 @login_required
-def vehicles():
+def property_edit(prop_id):
+    prop = Property.query.get_or_404(prop_id)
+    if request.method == 'POST':
+        prop.short_name = request.form.get('short_name', prop.short_name)
+        prop.address = request.form.get('address', prop.address)
+        prop.property_type = request.form.get('property_type', prop.property_type)
+        prop.ownership = request.form.get('ownership', prop.ownership)
+        prop.postcode = request.form.get('postcode', prop.postcode)
+        prop.region = request.form.get('region', prop.region)
+        prop.notes = request.form.get('notes', prop.notes)
+        db.session.commit()
+        flash('Property updated', 'success')
+        return redirect(url_for('property_detail', prop_id=prop_id))
+    return render_template('property_form.html', prop=prop)
+
+@app.route('/contacts/new', methods=['GET', 'POST'])
+@login_required
+def contact_new():
+    if request.method == 'POST':
+        c = Contact(
+            first_name=request.form.get('first_name') or None,
+            last_name=request.form.get('last_name') or None,
+            company_name=request.form.get('company_name') or None,
+            role=request.form.get('role', 'other'),
+            mobile=request.form.get('mobile') or None,
+            landline=request.form.get('landline') or None,
+            email=request.form.get('email') or None,
+            speciality=request.form.get('speciality') or None,
+            region=request.form.get('region') or None,
+            rating=request.form.get('rating', 'unrated'),
+            notes=request.form.get('notes') or None,
+        )
+        db.session.add(c)
+        db.session.commit()
+        flash('Contact added', 'success')
+        return redirect(url_for('contact_detail', contact_id=c.id))
+    return render_template('contact_form.html', contact=None)
+
+@app.route('/contacts/<int:contact_id>/edit', methods=['GET', 'POST'])
+@login_required
+def contact_edit(contact_id):
+    contact = Contact.query.get_or_404(contact_id)
+    if request.method == 'POST':
+        contact.first_name = request.form.get('first_name') or None
+        contact.last_name = request.form.get('last_name') or None
+        contact.company_name = request.form.get('company_name') or None
+        contact.role = request.form.get('role', contact.role)
+        contact.mobile = request.form.get('mobile') or None
+        contact.landline = request.form.get('landline') or None
+        contact.email = request.form.get('email') or None
+        contact.speciality = request.form.get('speciality') or None
+        contact.region = request.form.get('region') or None
+        contact.rating = request.form.get('rating', contact.rating)
+        contact.notes = request.form.get('notes') or None
+        db.session.commit()
+        flash('Contact updated', 'success')
+        return redirect(url_for('contact_detail', contact_id=contact_id))
+    return render_template('contact_form.html', contact=contact)
+
+@app.route('/documents/new', methods=['GET', 'POST'])
+@login_required
+def document_new():
+    if request.method == 'POST':
+        doc = Document(
+            entity_type=request.form.get('entity_type', 'property'),
+            entity_id=int(request.form.get('entity_id', 0)),
+            doc_type=request.form.get('doc_type'),
+            category=request.form.get('category') or None,
+            issued_date=_parse_date(request.form.get('issued_date')),
+            expiry_date=_parse_date(request.form.get('expiry_date')),
+            reminder_date=_parse_date(request.form.get('reminder_date')),
+            notes=request.form.get('notes') or None,
+            status=request.form.get('status', 'active'),
+            drive_url=request.form.get('drive_url') or None,
+            verified=request.form.get('verified') == 'on',
+        )
+        db.session.add(doc)
+        db.session.commit()
+        flash('Document added', 'success')
+        if doc.entity_type == 'property':
+            return redirect(url_for('property_detail', prop_id=doc.entity_id))
+        return redirect(url_for('compliance'))
+    props = Property.query.filter_by(active=True).order_by(Property.short_name).all()
+    vehicles = Vehicle.query.filter_by(active=True).all()
+    return render_template('document_form.html', doc=None, props=props, vehicles=vehicles)
+
+@app.route('/documents/<int:doc_id>/edit', methods=['GET', 'POST'])
+@login_required
+def document_edit(doc_id):
+    doc = Document.query.get_or_404(doc_id)
+    if request.method == 'POST':
+        doc.doc_type = request.form.get('doc_type', doc.doc_type)
+        doc.category = request.form.get('category') or None
+        doc.issued_date = _parse_date(request.form.get('issued_date'))
+        doc.expiry_date = _parse_date(request.form.get('expiry_date'))
+        doc.reminder_date = _parse_date(request.form.get('reminder_date'))
+        doc.notes = request.form.get('notes') or None
+        doc.status = request.form.get('status', doc.status)
+        doc.drive_url = request.form.get('drive_url') or None
+        doc.verified = request.form.get('verified') == 'on'
+        db.session.commit()
+        flash('Document updated', 'success')
+        if doc.entity_type == 'property':
+            return redirect(url_for('property_detail', prop_id=doc.entity_id))
+        return redirect(url_for('compliance'))
+    props = Property.query.filter_by(active=True).order_by(Property.short_name).all()
+    vehicles = Vehicle.query.filter_by(active=True).all()
+    return render_template('document_form.html', doc=doc, props=props, vehicles=vehicles)
+
+@app.route('/visits/<int:visit_id>/edit', methods=['GET', 'POST'])
+@login_required
+def visit_edit(visit_id):
+    visit = Visit.query.get_or_404(visit_id)
+    if request.method == 'POST':
+        visit.property_id = request.form.get('property_id') or None
+        visit.visited_by_id = request.form.get('visited_by_id') or None
+        visit.visit_type = request.form.get('visit_type', visit.visit_type)
+        visit.visit_date = _parse_date(request.form.get('visit_date')) or visit.visit_date
+        visit.notes = request.form.get('notes') or None
+        visit.checked = request.form.get('checked') == 'on'
+        db.session.commit()
+        flash('Visit updated', 'success')
+        return redirect(url_for('visits'))
+    props = Property.query.filter_by(active=True).order_by(Property.short_name).all()
+    directors = Contact.query.filter_by(role='director', active=True).all()
+    return render_template('visit_form.html', visit=visit, props=props, directors=directors)
+
+@app.route('/expenses/<int:exp_id>/edit', methods=['GET', 'POST'])
+@login_required
+def expense_edit(exp_id):
+    exp = Expense.query.get_or_404(exp_id)
+    if request.method == 'POST':
+        amount_raw = request.form.get('amount_gbp', '0').replace('£', '').replace(',', '').strip()
+        exp.property_id = request.form.get('property_id') or None
+        exp.director_id = request.form.get('director_id') or None
+        exp.expense_type = request.form.get('expense_type', exp.expense_type)
+        exp.from_address = request.form.get('from_address') or None
+        exp.to_address = request.form.get('to_address') or None
+        exp.additional_stops = int(request.form.get('additional_stops', 0) or 0)
+        exp.amount_gbp = float(amount_raw) if amount_raw else 0.0
+        exp.notes = request.form.get('notes') or None
+        exp.entity = request.form.get('entity', exp.entity)
+        exp.checked = request.form.get('checked') == 'on'
+        exp.expense_date = _parse_date(request.form.get('expense_date')) or exp.expense_date
+        db.session.commit()
+        flash('Expense updated', 'success')
+        return redirect(url_for('expenses'))
+    props = Property.query.filter_by(active=True).order_by(Property.short_name).all()
+    directors = Contact.query.filter_by(role='director', active=True).all()
+    return render_template('expense_form.html', expense=exp, props=props, directors=directors)
     vehs = Vehicle.query.filter_by(active=True).order_by(Vehicle.registration).all()
     return render_template('vehicles.html', vehicles=vehs)
 

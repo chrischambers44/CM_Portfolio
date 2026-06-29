@@ -10,8 +10,10 @@
     </div>
     <div class="flex">
       <span class="pill pill-{{ 'company' if prop.ownership=='company' else 'joint' if prop.ownership=='joint' else 'personal' }}">{{ prop.ownership.replace('_',' ') }}</span>
-      <span class="badge badge-{{ 'blue' if prop.property_type=='rental' else 'grey' }}">{{ prop.property_type }}</span>
-      <a href="{{ url_for('task_new') }}?property_id={{ prop.id }}" class="btn btn-gold">+ Task</a>
+      <span class="badge badge-{{ 'navy' if prop.property_type=='rental' else 'grey' }}">{{ prop.property_type }}</span>
+      <a href="{{ url_for('property_edit', prop_id=prop.id) }}" class="btn btn-ghost">✏ Edit</a>
+      <a href="{{ url_for('document_new') }}?entity_type=property&entity_id={{ prop.id }}" class="btn btn-ghost">+ Document</a>
+      <a href="{{ url_for('task_new') }}?property_id={{ prop.id }}" class="btn btn-green">+ Task</a>
       <a href="{{ url_for('visit_new') }}?property_id={{ prop.id }}" class="btn btn-ghost">+ Visit</a>
     </div>
   </div>
@@ -37,8 +39,9 @@
             <span class="{{ doc.traffic_class }} small">{{ doc.expiry_date|fmt_date if doc.expiry_date else '—' }}</span>
             {% if doc.expiry_date %}<span class="muted small">({{ doc.expiry_date|days_label }})</span>{% endif %}
             {% if doc.drive_url and doc.drive_url.startswith('http') %}
-            <a href="{{ doc.drive_url }}" target="_blank" class="small" title="Open document">📎</a>
+            <a href="{{ doc.drive_url }}" target="_blank" class="btn btn-ghost btn-sm">📎</a>
             {% endif %}
+            <a href="{{ url_for('document_edit', doc_id=doc.id) }}" class="btn btn-ghost btn-sm">✏</a>
           </div>
         </div>
         {% endfor %}

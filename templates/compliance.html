@@ -27,8 +27,7 @@
     <table>
       <thead><tr>
         <th>Status</th><th>Document</th><th>Property / Entity</th>
-        <th>Category</th><th>Issued</th><th>Expires</th>
-        <th>Days</th><th>Verified</th><th>Doc Link</th>
+        <th>Expires</th><th>Days</th><th>Notes</th><th>Document</th><th></th>
       </tr></thead>
       <tbody>
       {% for doc, entity_name in docs %}
@@ -41,13 +40,14 @@
         </td>
         <td style="font-weight:500;">{{ doc.doc_type }}</td>
         <td>
-          {{ entity_name }}
           {% if doc.entity_type == 'property' and doc.property %}
-          <br><span class="muted small">{{ doc.property.address[:40] }}</span>
+          <a href="{{ url_for('property_detail', prop_id=doc.entity_id) }}">{{ entity_name }}</a>
+          {% elif doc.entity_type == 'company' %}
+          <span>C&M Ltd</span>
+          {% else %}
+          {{ entity_name }}
           {% endif %}
         </td>
-        <td class="muted small">{{ doc.category or '—' }}</td>
-        <td class="muted small">{{ doc.issued_date|fmt_date }}</td>
         <td class="{{ doc.traffic_class }} small">{{ doc.expiry_date|fmt_date }}</td>
         <td class="small">
           {% if doc.days_until_expiry is not none %}
@@ -58,16 +58,13 @@
             {% endif %}
           {% else %}—{% endif %}
         </td>
-        <td style="text-align:center;">
-          {% if doc.verified %}<span style="color:var(--sage);">✓</span>{% else %}<span class="muted">○</span>{% endif %}
-        </td>
+        <td class="muted small">{{ (doc.notes or '')[:50] }}{% if doc.notes and doc.notes|length > 50 %}…{% endif %}</td>
         <td>
           {% if doc.drive_url and doc.drive_url.startswith('http') %}
-          <a href="{{ doc.drive_url }}" target="_blank" class="small drive-link">Open</a>
-          {% elif doc.notes and ('email' in doc.notes.lower() or 'online' in doc.notes.lower()) %}
-          <span class="muted small">{{ doc.notes[:20] }}</span>
+          <a href="{{ doc.drive_url }}" target="_blank" class="btn btn-ghost btn-sm">📎 Open</a>
           {% else %}—{% endif %}
         </td>
+        <td><a href="{{ url_for('document_edit', doc_id=doc.id) }}" class="btn btn-ghost btn-sm">✏ Edit</a></td>
       </tr>
       {% endfor %}
       </tbody>

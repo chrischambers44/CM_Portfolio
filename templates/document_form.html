@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit' if doc else 'Add' }} Document{% endblock %}
+{% block content %}
+<div class="page" style="max-width:700px;">
+  <div class="page-header">
+    <div>
+      <div class="breadcrumb"><a href="{{ url_for('compliance') }}">Compliance</a> /</div>
+      <div class="page-title">{{ 'Edit Document' if doc else 'Add Document' }}</div>
+    </div>
+  </div>
+  <div class="card">
+    <form method="POST">
+      <div class="form-grid-2">
+        <div class="form-group form-full">
+          <label>Document Type *</label>
+          <input type="text" name="doc_type" value="{{ doc.doc_type if doc else '' }}" required
+            placeholder="e.g. Gas Safety, EICR, Insurance, Tenancy Contract">
+        </div>
+        <div class="form-group">
+          <label>Entity Type</label>
+          <select name="entity_type" id="entityType" onchange="updateEntitySelect()">
+            {% for et in ['property','vehicle','company'] %}
+            <option value="{{ et }}" {% if doc and doc.entity_type==et %}selected{% endif %}>{{ et.title() }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group" id="entitySelectWrap">
+          <label>Property / Vehicle</label>
+          <select name="entity_id" id="entitySelect">
+            <optgroup label="Properties">
+              {% for p in props %}
+              <option value="{{ p.id }}" data-type="property" {% if doc and doc.entity_type=='property' and doc.entity_id==p.id %}selected{% endif %}>{{ p.short_name }}</option>
+              {% endfor %}
+            </optgroup>
+            <optgroup label="Vehicles">
+              {% for v in vehicles %}
+              <option value="{{ v.id }}" data-type="vehicle" {% if doc and doc.entity_type=='vehicle' and doc.entity_id==v.id %}selected{% endif %}>{{ v.registration }}</option>
+              {% endfor %}
+            </optgroup>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Issued / Done Date</label>
+          <input type="date" name="issued_date" value="{{ doc.issued_date.isoformat() if doc and doc.issued_date else '' }}">
+        </div>
+        <div class="form-group">
+          <label>Expiry Date</label>
+          <input type="date" name="expiry_date" value="{{ doc.expiry_date.isoformat() if doc and doc.expiry_date else '' }}">
+        </div>
+        <div class="form-group">
+          <label>Reminder Date</label>
+          <input type="date" name="reminder_date" value="{{ doc.reminder_date.isoformat() if doc and doc.reminder_date else '' }}">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select name="status">
+            <option value="active" {% if not doc or doc.status=='active' %}selected{% endif %}>Active</option>
+            <option value="archive" {% if doc and doc.status=='archive' %}selected{% endif %}>Archive</option>
+          </select>
+        </div>
+        <div class="form-group form-full">
+          <label>Google Drive URL</label>
+          <input type="url" name="drive_url" value="{{ doc.drive_url if doc and doc.drive_url else '' }}" placeholder="https://drive.google.com/file/d/...">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea name="notes" rows="3">{{ doc.notes if doc else '' }}</textarea>
+      </div>
+      <div class="form-group">
+        <label><input type="checkbox" name="verified" style="width:auto;margin-right:.4rem;" {% if doc and doc.verified %}checked{% endif %}> Document verified / checked</label>
+      </div>
+      <div class="flex" style="justify-content:flex-end;gap:.6rem;">
+        <a href="{{ url_for('compliance') }}" class="btn btn-ghost">Cancel</a>
+        <button type="submit" class="btn btn-green">{{ 'Save Changes' if doc else 'Add Document' }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+function updateEntitySelect(){
+  const et=document.getElementById('entityType').value;
+  document.getElementById('entitySelectWrap').style.display=et==='company'?'none':'';
+}
+updateEntitySelect();
+</script>
+{% endblock %}

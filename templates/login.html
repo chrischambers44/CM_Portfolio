@@ -3,57 +3,91 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>C&M Portfolio — Sign In</title>
+<title>ChrAsh — Sign In</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#f5f2ed;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;}
-
-.login-wrap{width:100%;max-width:480px;padding:2rem;}
-
+body{
+  font-family:'Inter',system-ui,sans-serif;
+  background:linear-gradient(135deg,#1a2744 0%,#243459 50%,#1a3a2a 100%);
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.login-wrap{width:100%;max-width:460px;padding:2rem 1.5rem;}
 .brand{text-align:center;margin-bottom:2.5rem;}
-.brand h1{font-size:1.8rem;font-weight:800;letter-spacing:.04em;color:#e8c96a;}
-.brand p{font-size:.82rem;color:#7a7265;margin-top:.4rem;}
+.brand-icon{
+  width:70px;height:70px;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.2);
+  border-radius:16px;display:flex;align-items:center;justify-content:center;
+  margin:0 auto 1rem;font-family:'Playfair Display',serif;font-size:1.5rem;color:white;
+}
+.brand-icon span{color:#7dbf7d;}
+.brand h1{font-family:'Playfair Display',serif;font-size:2rem;color:white;letter-spacing:.02em;}
+.brand p{font-size:.8rem;color:rgba(255,255,255,.5);margin-top:.4rem;letter-spacing:.05em;text-transform:uppercase;}
 
-/* PROFILE PICKER */
-.profiles{display:flex;gap:1.5rem;justify-content:center;margin-bottom:2rem;flex-wrap:wrap;}
-.profile-card{display:flex;flex-direction:column;align-items:center;gap:.7rem;cursor:pointer;padding:.8rem;border-radius:8px;border:2px solid transparent;transition:all .2s;text-decoration:none;}
-.profile-card:hover{border-color:#b5862a;background:rgba(181,134,42,.1);}
-.profile-card.selected{border-color:#e8c96a;background:rgba(232,201,106,.1);}
-.avatar{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:800;color:white;letter-spacing:.02em;flex-shrink:0;}
-.profile-name{font-size:.85rem;font-weight:600;color:#f5f2ed;text-align:center;}
-.profile-role{font-size:.7rem;color:#7a7265;text-align:center;}
+/* PROFILE CARDS */
+.profiles{display:flex;gap:1rem;justify-content:center;margin-bottom:2rem;flex-wrap:wrap;}
+.profile-card{
+  display:flex;flex-direction:column;align-items:center;gap:.65rem;
+  cursor:pointer;padding:1rem 1.2rem;border-radius:10px;
+  border:2px solid rgba(255,255,255,.1);transition:all .2s;text-decoration:none;
+  background:rgba(255,255,255,.05);min-width:120px;
+}
+.profile-card:hover{border-color:rgba(125,191,125,.6);background:rgba(125,191,125,.1);}
+.profile-card.selected{border-color:#7dbf7d;background:rgba(125,191,125,.15);}
+.avatar{
+  width:68px;height:68px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.4rem;font-weight:700;color:white;
+  border:3px solid rgba(255,255,255,.2);
+}
+.profile-name{font-size:.9rem;font-weight:600;color:white;}
+.profile-role{font-size:.68rem;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.06em;}
 
 /* PASSWORD FORM */
-.pw-form{background:#1e2230;border:1px solid #2a2d3a;border-radius:10px;padding:1.8rem;display:none;}
+.pw-form{
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
+  border-radius:12px;padding:1.8rem;backdrop-filter:blur(10px);display:none;
+}
 .pw-form.show{display:block;}
-.pw-header{display:flex;align-items:center;gap:.8rem;margin-bottom:1.2rem;}
-.pw-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;color:white;flex-shrink:0;}
-.pw-name{font-size:.95rem;font-weight:600;}
-.pw-sub{font-size:.72rem;color:#7a7265;margin-top:.1rem;}
+.pw-header{display:flex;align-items:center;gap:.9rem;margin-bottom:1.4rem;}
+.pw-avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:700;color:white;}
+.pw-name{font-size:.95rem;font-weight:600;color:white;}
+.pw-sub{font-size:.72rem;color:rgba(255,255,255,.45);margin-top:.15rem;}
 .pw-input-wrap{position:relative;margin-bottom:1rem;}
-.pw-input{width:100%;padding:.7rem 2.5rem .7rem .9rem;border:1px solid #3a3d4a;border-radius:6px;background:#0f1117;color:#f5f2ed;font-size:.9rem;outline:none;transition:border-color .15s;font-family:inherit;}
-.pw-input:focus{border-color:#b5862a;}
-.pw-eye{position:absolute;right:.7rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#7a7265;font-size:.9rem;padding:.2rem;}
-.pw-eye:hover{color:#f5f2ed;}
-.error{font-size:.75rem;color:#e74c3c;margin-bottom:.8rem;padding:.4rem .6rem;background:rgba(231,76,60,.1);border-radius:4px;}
-.btn-signin{width:100%;padding:.7rem;background:#b5862a;border:none;border-radius:6px;color:white;font-size:.88rem;font-weight:600;cursor:pointer;transition:background .15s;font-family:inherit;}
-.btn-signin:hover{background:#c99530;}
-.btn-back{display:block;text-align:center;margin-top:.8rem;font-size:.75rem;color:#7a7265;cursor:pointer;background:none;border:none;font-family:inherit;width:100%;}
-.btn-back:hover{color:#f5f2ed;}
-
-.footer{margin-top:2rem;text-align:center;font-size:.7rem;color:#3a3d4a;}
+.pw-input{
+  width:100%;padding:.72rem 2.8rem .72rem 1rem;
+  border:1px solid rgba(255,255,255,.2);border-radius:7px;
+  background:rgba(255,255,255,.08);color:white;font-size:.88rem;
+  outline:none;transition:border-color .15s;font-family:inherit;
+}
+.pw-input::placeholder{color:rgba(255,255,255,.35);}
+.pw-input:focus{border-color:#7dbf7d;background:rgba(255,255,255,.12);}
+.pw-eye{position:absolute;right:.8rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:rgba(255,255,255,.4);font-size:.9rem;padding:.2rem;}
+.pw-eye:hover{color:white;}
+.error{font-size:.75rem;color:#ff8080;margin-bottom:.9rem;padding:.45rem .7rem;background:rgba(192,57,43,.2);border-radius:5px;border:1px solid rgba(192,57,43,.3);}
+.btn-signin{
+  width:100%;padding:.75rem;background:#2d6a2d;border:none;border-radius:7px;
+  color:white;font-size:.88rem;font-weight:600;cursor:pointer;
+  transition:background .15s;font-family:inherit;letter-spacing:.02em;
+}
+.btn-signin:hover{background:#3a8a3a;}
+.btn-back{
+  display:block;text-align:center;margin-top:.85rem;
+  font-size:.75rem;color:rgba(255,255,255,.4);
+  cursor:pointer;background:none;border:none;font-family:inherit;width:100%;
+}
+.btn-back:hover{color:rgba(255,255,255,.7);}
+.footer{margin-top:2rem;text-align:center;font-size:.68rem;color:rgba(255,255,255,.2);letter-spacing:.04em;}
 </style>
 </head>
 <body>
-
 <div class="login-wrap">
   <div class="brand">
-    <h1>C&M Portfolio</h1>
+    <div class="brand-icon">C<span>&</span>M</div>
+    <h1>ChrAsh</h1>
     <p>Chambers &amp; Morgan Property Management</p>
   </div>
 
   {% if not selected_user %}
-  <!-- PROFILE PICKER -->
   <div class="profiles">
     {% for user in users %}
     <a href="{{ url_for('login_select', user_id=user.id) }}" class="profile-card">
@@ -63,10 +97,9 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#f5f2e
     </a>
     {% endfor %}
   </div>
-  <div class="footer">Select your profile to continue</div>
+  <div class="footer">SELECT YOUR PROFILE TO CONTINUE</div>
 
   {% else %}
-  <!-- PASSWORD FORM -->
   <div class="pw-form show">
     <div class="pw-header">
       <div class="pw-avatar" style="background:{{ selected_user.avatar_colour }}">{{ selected_user.avatar_initials }}</div>
@@ -75,27 +108,21 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f1117;color:#f5f2e
         <div class="pw-sub">Enter your password to continue</div>
       </div>
     </div>
-    {% if error %}
-    <div class="error">{{ error }}</div>
-    {% endif %}
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
     <form method="POST" action="{{ url_for('login') }}">
       <input type="hidden" name="user_id" value="{{ selected_user.id }}">
       <div class="pw-input-wrap">
         <input type="password" name="password" id="pw" class="pw-input" placeholder="Password" autofocus autocomplete="current-password">
         <button type="button" class="pw-eye" onclick="togglePw()">👁</button>
       </div>
-      <button type="submit" class="btn-signin">Sign In</button>
+      <button type="submit" class="btn-signin">Sign In →</button>
     </form>
     <a href="{{ url_for('login') }}" class="btn-back">← Back to profiles</a>
   </div>
   {% endif %}
 </div>
-
 <script>
-function togglePw(){
-  const i=document.getElementById('pw');
-  i.type=i.type==='password'?'text':'password';
-}
+function togglePw(){const i=document.getElementById('pw');i.type=i.type==='password'?'text':'password';}
 </script>
 </body>
 </html>

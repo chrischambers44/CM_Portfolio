@@ -8,9 +8,10 @@
       <div class="page-title">{{ contact.display_name }}</div>
     </div>
     <div class="flex">
-      <span class="badge badge-{{ 'blue' if contact.role=='director' else 'sage' if contact.role=='tenant' else 'gold' if contact.role=='tradesperson' else 'grey' }}">{{ contact.role }}</span>
+      <span class="badge badge-{{ 'navy' if contact.role=='director' else 'green' if contact.role=='tenant' else 'amber' if contact.role=='tradesperson' else 'grey' }}">{{ contact.role }}</span>
       {% if contact.rating == 'gold' %}<span>⭐ Gold star</span>{% endif %}
-      {% if contact.rating == 'black' %}<span style="color:var(--rose);">⚫ Black mark</span>{% endif %}
+      {% if contact.rating == 'black' %}<span style="color:var(--red);">⚫ Black mark</span>{% endif %}
+      <a href="{{ url_for('contact_edit', contact_id=contact.id) }}" class="btn btn-ghost">✏ Edit</a>
     </div>
   </div>
 

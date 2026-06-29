@@ -7,6 +7,7 @@
       <div class="page-title">Contact Directory</div>
       <div class="page-sub">{{ contacts|length }} contacts</div>
     </div>
+    <a href="{{ url_for('contact_new') }}" class="btn btn-green">+ New Contact</a>
   </div>
   <div style="display:flex;gap:.6rem;margin-bottom:1rem;">
     {% for r, label in [('all','All'),('director','Directors'),('tenant','Tenants'),('tradesperson','Tradespeople'),('other','Other')] %}

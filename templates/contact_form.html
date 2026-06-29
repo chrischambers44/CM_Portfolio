@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit' if contact else 'New' }} Contact{% endblock %}
+{% block content %}
+<div class="page" style="max-width:700px;">
+  <div class="page-header">
+    <div>
+      <div class="breadcrumb"><a href="{{ url_for('contacts') }}">Contacts</a> /</div>
+      <div class="page-title">{{ 'Edit Contact' if contact else 'New Contact' }}</div>
+    </div>
+  </div>
+  <div class="card">
+    <form method="POST">
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>First Name</label>
+          <input type="text" name="first_name" value="{{ contact.first_name if contact else '' }}">
+        </div>
+        <div class="form-group">
+          <label>Last Name</label>
+          <input type="text" name="last_name" value="{{ contact.last_name if contact else '' }}">
+        </div>
+        <div class="form-group form-full">
+          <label>Company Name</label>
+          <input type="text" name="company_name" value="{{ contact.company_name if contact else '' }}" placeholder="Leave blank for individuals">
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <select name="role">
+            {% for r, label in [('director','Director'),('tenant','Tenant'),('tradesperson','Tradesperson'),('other','Other')] %}
+            <option value="{{ r }}" {% if contact and contact.role==r %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Rating</label>
+          <select name="rating">
+            {% for r, label in [('unrated','Unrated'),('gold','⭐ Gold Star'),('neutral','Neutral'),('black','⚫ Black Mark')] %}
+            <option value="{{ r }}" {% if contact and contact.rating==r %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Mobile</label>
+          <input type="tel" name="mobile" value="{{ contact.mobile if contact else '' }}">
+        </div>
+        <div class="form-group">
+          <label>Landline</label>
+          <input type="tel" name="landline" value="{{ contact.landline if contact else '' }}">
+        </div>
+        <div class="form-group form-full">
+          <label>Email</label>
+          <input type="email" name="email" value="{{ contact.email if contact else '' }}">
+        </div>
+        <div class="form-group">
+          <label>Speciality</label>
+          <input type="text" name="speciality" value="{{ contact.speciality if contact else '' }}" placeholder="e.g. Gas Heating Engineer">
+        </div>
+        <div class="form-group">
+          <label>Region</label>
+          <input type="text" name="region" value="{{ contact.region if contact else '' }}" placeholder="e.g. Yeovil, Cardiff">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea name="notes" rows="4" placeholder="Performance notes, contact preferences, warnings…">{{ contact.notes if contact else '' }}</textarea>
+      </div>
+      <div class="flex" style="justify-content:flex-end;gap:.6rem;">
+        <a href="{{ url_for('contact_detail', contact_id=contact.id) if contact else url_for('contacts') }}" class="btn btn-ghost">Cancel</a>
+        <button type="submit" class="btn btn-green">{{ 'Save Changes' if contact else 'Add Contact' }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

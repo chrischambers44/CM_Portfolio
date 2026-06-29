@@ -340,6 +340,7 @@ def migrate_contacts(rows):
                 region=row.get('Region', '') or row.get('region', '') or None,
                 rating=rating,
                 notes=row.get('Notes', '') or row.get('notes', '') or None,
+                legacy_id=row.get('Row ID') or row.get('_RowNumber') or None,
             )
             db.session.add(c)
             db.session.flush()
@@ -362,36 +363,34 @@ def migrate_contacts(rows):
 def migrate_documents(rows, legacy_map, vehicle_map, contact_map):
     """Migrate documents table."""
     created = skipped = 0
-    today = date.today()
 
-    # Vehicle legacy hash → vehicle db id
     VEHICLE_HASH = 'Lv8MXa5vmIfBk17CxCIcxX'
 
     for row in rows:
-        doc_type = row.get('Document Type', '') or row.get('doc_type', '') or row.get('Type', '')
+        # Actual AppSheet columns: Document Title, Document Type, Expiry Date,
+        # Reminder Date, Notes, Address Ref, Status, Document Location, Ignore Expiry
+        doc_type = (row.get('Document Title') or row.get('Document Type') or '').strip()
+        category = (row.get('Document Type') or '').strip()
         if not doc_type:
             skipped += 1
             continue
 
-        prop_hash = (row.get('Property', '') or row.get('property', '')
-                     or row.get('Property ID', '')).strip()
+        prop_hash = (row.get('Address Ref') or row.get('Property') or '').strip()
 
-        # Determine entity
         if prop_hash == VEHICLE_HASH:
             entity_type = 'vehicle'
-            # RS6 vs ZX10 inferred from doc_type
-            if 'RS6' in doc_type or 'rs6' in doc_type.lower():
+            if 'RS6' in doc_type.upper():
                 entity_id = vehicle_map.get('CHRIS_RS6')
-            elif 'ZX10' in doc_type or 'zx10' in doc_type.lower():
+            elif 'ZX10' in doc_type.upper():
                 entity_id = vehicle_map.get('CHRIS_ZX10')
             else:
-                entity_id = vehicle_map.get('CHRIS_RS6')  # default
+                entity_id = vehicle_map.get('CHRIS_RS6')
         elif prop_hash in ('wmhD7gHb9AfEUtu9sJTcKu', '7jqfo2KY4l0zDaYqcNFW4e'):
             entity_type = 'company'
-            entity_id = 1  # C&M entity
+            entity_id = 1
         elif prop_hash == 'jpiw0wIP4KPN9sTJJnUE6w':
             skipped += 1
-            continue  # test entity
+            continue
         elif prop_hash:
             entity_type = 'property'
             entity_id = legacy_map.get(prop_hash)
@@ -402,28 +401,32 @@ def migrate_documents(rows, legacy_map, vehicle_map, contact_map):
             skipped += 1
             continue
 
-        expiry = parse_date(row.get('Expiry Date', '') or row.get('expiry_date', ''))
-        issued = parse_date(row.get('Issued Date', '') or row.get('issued_date', '')
-                           or row.get('Done Date', ''))
-        status_raw = (row.get('Status', '') or row.get('status', '')).lower()
+        expiry = parse_date(row.get('Expiry Date') or '')
+        reminder = parse_date(row.get('Reminder Date') or '')
+        status_raw = (row.get('Status') or '').lower()
         status = 'archive' if 'archive' in status_raw else 'active'
-        verified_raw = (row.get('Verified', '') or row.get('Checked', '') or '').lower()
-        verified = 'checked' in verified_raw or verified_raw == 'true'
-        url = row.get('Document URL', '') or row.get('drive_url', '') or row.get('URL', '')
-        category = row.get('Category', '') or row.get('category', '')
-        notes = row.get('Notes', '') or row.get('notes', '')
+        url_raw = row.get('Document Location') or ''
+        if url_raw.startswith('{'):
+            try:
+                import json
+                url = json.loads(url_raw).get('Url', '').strip()
+            except:
+                url = ''
+        else:
+            url = url_raw.strip()
+        notes = row.get('Notes') or ''
 
         doc = Document(
             entity_type=entity_type,
             entity_id=entity_id,
             doc_type=doc_type,
             category=category or None,
-            issued_date=issued,
             expiry_date=expiry,
+            reminder_date=reminder,
             notes=notes or None,
             status=status,
             drive_url=url or None,
-            verified=verified,
+            verified=False,
         )
         db.session.add(doc)
         created += 1
@@ -437,44 +440,45 @@ def migrate_tasks(rows, legacy_map, contact_map):
     created = skipped = 0
 
     for row in rows:
-        title = row.get('Title', '') or row.get('title', '')
+        # Actual AppSheet columns: Task Title, Task Details, Status,
+        # People ID Ref, Address Ref, Date Created, Set reminder date,
+        # Rate this task, Photo, Photo 2, Photo 3
+        title = (row.get('Task Title') or row.get('Title') or '').strip()
         if not title:
             skipped += 1
             continue
 
-        prop_hash = (row.get('Property', '') or row.get('property', '')
-                     or row.get('Property ID', '')).strip()
+        prop_hash = (row.get('Address Ref') or row.get('Property') or '').strip()
         prop_id = legacy_map.get(prop_hash) if prop_hash else None
 
-        assigned_raw = (row.get('Assigned To', '') or row.get('assigned_to', '')).strip()
+        assigned_raw = (row.get('People ID Ref') or row.get('Assigned To') or '').strip()
         assigned_id = contact_map.get(assigned_raw)
 
-        status_raw = (row.get('Status', '') or row.get('status', '')).lower().replace(' ', '_')
+        status_raw = (row.get('Status') or '').lower().replace(' ', '_')
         status = 'complete' if 'complete' in status_raw else \
                  'in_progress' if 'in_progress' in status_raw or 'progress' in status_raw else \
                  'not_started'
 
-        priority_raw = row.get('Priority', '') or row.get('priority', '')
+        priority_raw = row.get('Rate this task') or row.get('Priority') or ''
         try:
             priority = int(priority_raw)
         except:
             priority = 0
 
-        created_date = parse_date(row.get('Date', '') or row.get('created_date', '')
-                                  or row.get('Created Date', ''))
-        due_date = parse_date(row.get('Due Date', '') or row.get('due_date', ''))
+        created_date = parse_date(row.get('Date Created') or row.get('Date') or '')
+        due_date = parse_date(row.get('Set reminder date') or row.get('Due Date') or '')
         try:
-            est_days = int(row.get('Estimated Days', '') or row.get('estimated_days', '') or 0)
+            est_days = int(row.get('Subsequent reminders days interval') or
+                          row.get('Estimated Days') or 0)
         except:
             est_days = 0
 
-        notes = row.get('Notes', '') or row.get('notes', '')
+        notes = row.get('Task Details') or row.get('Notes') or ''
 
-        # Images
         imgs = [
-            row.get('Image 1', '') or row.get('image_1', ''),
-            row.get('Image 2', '') or row.get('image_2', ''),
-            row.get('Image 3', '') or row.get('image_3', ''),
+            row.get('Photo') or row.get('Image 1') or '',
+            row.get('Photo 2') or row.get('Image 2') or '',
+            row.get('Photo 3') or row.get('Image 3') or '',
         ]
 
         task = Task(
@@ -505,20 +509,74 @@ def migrate_visits(rows, legacy_map, contact_map):
     """Migrate visits table."""
     created = skipped = 0
 
-    PROP_SHORT_MAP = {v: k for k, v in {
-        '180 Sherborne': '180 Sherborne',
-        '180A Sherborne': '180A Sherborne',
-        '180B Sherborne': '180B Sherborne',
-        '208 Sherborne': '208 Sherborne',
-        '210 Sherborne': '210 Sherborne',
-        '5 Boswell': '5 Boswell',
-        '450 Stanley Rd': '450 Stanley Rd',
-        '15 St Johns': '15 St Johns',
-        '70 Fosse Park': '70 Fosse Park',
-        '3 Sam Close': '3 Sam Close',
-    }.items()}
-
     prop_by_short = {p.short_name: p.id for p in Property.query.all()}
+    prop_by_legacy = {p.legacy_id: p.id for p in Property.query.all() if p.legacy_id}
+
+    # Build contact map by legacy Row ID from contacts CSV
+    contact_by_rowid = {}
+    for c in Contact.query.all():
+        if c.legacy_id:
+            contact_by_rowid[c.legacy_id] = c.id
+
+    for row in rows:
+        prop_raw = (row.get('Address of Visit') or row.get('Address Ref') or '').strip()
+
+        # Try legacy hash map first (most reliable)
+        prop_id = legacy_map.get(prop_raw) or prop_by_legacy.get(prop_raw)
+
+        if not prop_id:
+            # Fuzzy short name match as fallback
+            for short, pid in prop_by_short.items():
+                if prop_raw.lower() in short.lower() or short.lower() in prop_raw.lower():
+                    prop_id = pid
+                    break
+
+        if not prop_id:
+            skipped += 1
+            continue
+
+        person_raw = (row.get('Person') or '').strip()
+        # Person is a row ID hash — resolve via contact legacy_id
+        visited_by_id = contact_by_rowid.get(person_raw) or contact_map.get(person_raw)
+
+        visit_type_raw = (row.get('Type of visit') or '').lower()
+        visit_type = 'special' if 'special' in visit_type_raw else 'routine'
+
+        visit_date = parse_date(row.get('Date of visit') or row.get('Date') or '')
+        if not visit_date:
+            skipped += 1
+            continue
+
+        follow_up = (row.get('Follow up') or '').lower()
+        checked = follow_up in ('yes', 'true', 'checked')
+        notes = row.get('Notes') or ''
+
+        imgs = [
+            row.get('Photo 1') or '',
+            row.get('Photo2') or row.get('Photo 2') or '',
+            row.get('Photo3') or row.get('Photo 3') or '',
+        ]
+
+        visit = Visit(
+            property_id=prop_id,
+            visited_by_id=visited_by_id,
+            visit_type=visit_type,
+            visit_date=visit_date,
+            notes=notes or None,
+            checked=checked,
+            status='complete',
+        )
+        db.session.add(visit)
+        db.session.flush()
+
+        for img in imgs:
+            if img.strip():
+                db.session.add(VisitImage(visit_id=visit.id, image_path=img.strip()))
+
+        created += 1
+
+    db.session.commit()
+    print(f'  Visits: {created} created, {skipped} skipped')
 
     for row in rows:
         prop_raw = (row.get('Property', '') or row.get('property', '')).strip()

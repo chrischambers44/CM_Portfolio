@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Upload P&L{% endblock %}
+{% block content %}
+<div class="page" style="max-width:600px;">
+  <div class="page-header">
+    <div>
+      <div class="breadcrumb"><a href="{{ url_for('intelligence') }}">Intelligence</a> /</div>
+      <div class="page-title">Upload P&L Report</div>
+    </div>
+  </div>
+  <div class="card">
+    <form method="POST" enctype="multipart/form-data">
+      <div class="form-group">
+        <label>Quickfile P&L CSV *</label>
+        <input type="file" name="pl_file" accept=".csv" required>
+        <div class="muted small" style="margin-top:.4rem;">
+          In Quickfile: Reports → Profit & Loss → Export CSV. 
+          The period dates are read automatically from the file header.
+        </div>
+      </div>
+      <div style="background:var(--cream);border-radius:6px;padding:.8rem;font-size:.78rem;color:var(--muted);margin-bottom:1rem;line-height:1.6;">
+        <strong style="color:var(--navy);">Supported format:</strong> Chambers & Morgan Ltd company account P&L only.
+        If a report for the same period already exists it will be replaced.
+        Historic reports (20/21 onwards) are supported — upload each year separately.
+      </div>
+      <div class="flex" style="justify-content:flex-end;gap:.6rem;">
+        <a href="{{ url_for('intelligence') }}" class="btn btn-ghost">Cancel</a>
+        <button type="submit" class="btn btn-green">↑ Upload & Parse</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

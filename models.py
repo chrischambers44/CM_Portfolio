@@ -304,3 +304,105 @@ class User(UserMixin, db.Model):
 
     def __repr__(self):
         return f'<User {self.username}>'
+# Add these two classes to the END of models.py, before the final blank line
+
+class FinancialReport(db.Model):
+    __tablename__ = 'financial_reports'
+    id = db.Column(db.Integer, primary_key=True)
+    entity = db.Column(db.String(20), default='company')  # company/personal
+    period_start = db.Column(db.Date, nullable=False)
+    period_end = db.Column(db.Date, nullable=False)
+    filename = db.Column(db.String(200))
+    uploaded_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    raw_csv = db.Column(db.Text)
+
+    uploaded_by = db.relationship('User', foreign_keys=[uploaded_by_id])
+    lines = db.relationship('FinancialLine', backref='report', lazy='dynamic',
+                            cascade='all, delete-orphan')
+
+    @property
+    def period_label(self):
+        return f"YE {self.period_end.strftime('%-d %b %Y')}"
+
+    @property
+    def total_income(self):
+        return sum(l.amount for l in self.lines if l.section == 'turnover' and l.amount > 0)
+
+    @property
+    def total_cos(self):
+        return sum(l.amount for l in self.lines if l.section == 'cost_of_sales' and l.amount > 0)
+
+    @property
+    def gross_profit(self):
+        return self.total_income - self.total_cos
+
+    @property
+    def total_expenses(self):
+        return sum(l.amount for l in self.lines if l.section == 'expenses'
+                   and l.line_type not in ('corporation_tax', 'suspense') and l.amount > 0)
+
+    @property
+    def profit_before_tax(self):
+        return self.gross_profit - self.total_expenses
+
+    @property
+    def corporation_tax(self):
+        ct = self.lines.filter_by(line_type='corporation_tax').first()
+        return abs(ct.amount) if ct else 0
+
+    @property
+    def profit_after_tax(self):
+        return self.profit_before_tax - self.corporation_tax
+
+    def property_summary(self):
+        """Returns dict of property_id -> {income, maintenance, rates, mortgage_interest}"""
+        result = {}
+        for line in self.lines.filter(FinancialLine.property_id != None).all():
+            pid = line.property_id
+            if pid not in result:
+                result[pid] = {'income': 0, 'maintenance': 0, 'rates': 0,
+                               'mortgage_interest': 0, 'other': 0}
+            lt = line.line_type
+            if lt == 'income':
+                result[pid]['income'] += line.amount
+            elif lt == 'maintenance':
+                result[pid]['maintenance'] += line.amount
+            elif lt == 'rates':
+                result[pid]['rates'] += line.amount
+            elif lt == 'mortgage_interest':
+                result[pid]['mortgage_interest'] += line.amount
+            else:
+                result[pid]['other'] += line.amount
+        return result
+
+    def company_lines(self):
+        """Returns lines not attributed to a specific property"""
+        return self.lines.filter_by(property_id=None).all()
+
+    def __repr__(self):
+        return f'<FinancialReport {self.period_label}>'
+
+
+class FinancialLine(db.Model):
+    __tablename__ = 'financial_lines'
+    id = db.Column(db.Integer, primary_key=True)
+    report_id = db.Column(db.Integer, db.ForeignKey('financial_reports.id'), nullable=False)
+    nominal_code = db.Column(db.String(10))
+    description = db.Column(db.String(200))
+    amount = db.Column(db.Float, default=0.0)
+    section = db.Column(db.String(30))     # turnover/cost_of_sales/expenses
+    line_type = db.Column(db.String(30))   # income/maintenance/rates/mortgage_interest/
+                                           # company_expense/corporation_tax/suspense
+    property_id = db.Column(db.Integer, db.ForeignKey('properties.id'), nullable=True)
+
+    property = db.relationship('Property', foreign_keys=[property_id])
+
+    def __repr__(self):
+        return f'<FinancialLine {self.nominal_code} {self.amount}>'
+
+# ── INSTRUCTIONS ──────────────────────────────────────────────────────────────
+# Copy the two classes above (FinancialReport and FinancialLine) 
+# to the END of models.py on your PC, before the final blank line.
+# Then git add, commit, push and rebuild on the Pi.
+

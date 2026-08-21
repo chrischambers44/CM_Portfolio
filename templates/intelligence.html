@@ -1,38 +1,63 @@
 {% extends 'base.html' %}
-{% block title %}Portfolio Intelligence{% endblock %}
+{% block title %}Intelligence{% endblock %}
 {% block content %}
 <div class="page">
   <div class="page-header">
-    <div class="page-title">Portfolio Intelligence</div>
-    <div class="page-sub">Financial analysis · LTV projections · Acquisition pipeline</div>
-  </div>
-  <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;font-size:.82rem;color:var(--muted);">
-    ℹ The EstateIQ financial intelligence tool is available as a standalone application. 
-    <a href="https://chrash-portfolio.netlify.app" target="_blank">Open EstateIQ →</a>
-    &nbsp;·&nbsp; 
-    In a future release this will be embedded directly with live property data from this system.
+    <div>
+      <div class="page-title">Portfolio Intelligence</div>
+      <div class="page-sub">P&L analysis · per-property performance · AI insights</div>
+    </div>
+    <a href="{{ url_for('intelligence_upload') }}" class="btn btn-green">↑ Upload P&L</a>
   </div>
 
-  <!-- QUICK FINANCIAL SUMMARY from DB -->
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem;">
-    {% for prop in props %}
-    <div class="card" style="border-left:3px solid var(--blue);">
-      <div style="font-weight:600;font-size:.85rem;margin-bottom:.4rem;">{{ prop.short_name }}</div>
-      <div class="muted small">{{ prop.address[:40] }}</div>
-      <div class="mt-1">
-        <span class="pill pill-{{ 'company' if prop.ownership=='company' else 'joint' if prop.ownership=='joint' else 'personal' }}">{{ prop.ownership.replace('_',' ') }}</span>
+  {% if reports %}
+  <div class="card mb-2">
+    <div class="card-title">Uploaded P&L Reports</div>
+    <div class="table-wrap" style="box-shadow:none;border:none;">
+      <table>
+        <thead><tr><th>Period</th><th>Income</th><th>Gross Profit</th><th>Profit Before Tax</th><th>Profit After Tax</th><th>Uploaded</th><th></th></tr></thead>
+        <tbody>
+        {% for r in reports %}
+        <tr>
+          <td style="font-weight:600;">{{ r.period_label }}</td>
+          <td class="mono">£{{ '{:,.0f}'.format(r.total_income) }}</td>
+          <td class="mono">£{{ '{:,.0f}'.format(r.gross_profit) }}</td>
+          <td class="mono {{ 'doc-red' if r.profit_before_tax < 0 else '' }}">£{{ '{:,.0f}'.format(r.profit_before_tax) }}</td>
+          <td class="mono {{ 'doc-red' if r.profit_after_tax < 0 else 'doc-green' }}">£{{ '{:,.0f}'.format(r.profit_after_tax) }}</td>
+          <td class="muted small">{{ r.uploaded_at|fmt_date }}</td>
+          <td><a href="{{ url_for('intelligence_report', report_id=r.id) }}" class="btn btn-ghost btn-sm">View →</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- QUICK TREND CHART if multiple years -->
+  {% if reports|length > 1 %}
+  <div class="card">
+    <div class="card-title">Income & Profit Trend</div>
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.5rem;">
+      {% for r in reports|reverse %}
+      <div style="flex:1;min-width:120px;background:var(--paper);border:1px solid var(--border);border-radius:6px;padding:.8rem;text-align:center;">
+        <div class="muted small">{{ r.period_end.year }}</div>
+        <div style="font-weight:700;font-size:1.1rem;color:var(--navy);margin:.3rem 0;">£{{ '{:,.0f}'.format(r.total_income) }}</div>
+        <div class="small" style="color:{{ 'var(--green)' if r.profit_after_tax >= 0 else 'var(--red)' }};">
+          PAT: £{{ '{:,.0f}'.format(r.profit_after_tax) }}
+        </div>
       </div>
+      {% endfor %}
     </div>
-    {% endfor %}
   </div>
+  {% endif %}
 
+  {% else %}
   <div class="card" style="text-align:center;padding:3rem;color:var(--muted);">
-    <div style="font-size:1.5rem;margin-bottom:.8rem;">📊</div>
-    <div style="font-weight:600;margin-bottom:.4rem;">Full EstateIQ Integration Coming Soon</div>
-    <div class="small">LTV charts, projections, pipeline analysis and AI insights will be embedded here,<br>pulling live data from your property register.</div>
-    <div class="mt-2">
-      <a href="https://chrash-portfolio.netlify.app" target="_blank" class="btn btn-gold">Open EstateIQ →</a>
-    </div>
+    <div style="font-size:2rem;margin-bottom:.8rem;">📊</div>
+    <div style="font-weight:600;color:var(--navy);margin-bottom:.4rem;">No P&L reports uploaded yet</div>
+    <div class="small mb-2">Upload your Quickfile P&L CSV to get started. You can upload historic reports to build a multi-year picture.</div>
+    <a href="{{ url_for('intelligence_upload') }}" class="btn btn-green">↑ Upload First P&L</a>
   </div>
+  {% endif %}
 </div>
 {% endblock %}

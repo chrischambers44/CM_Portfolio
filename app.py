@@ -1,7 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, abort
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from datetime import datetime, date, timedelta
-from models import db, Property, Vehicle, Contact, PropertyContact, Document, Task, TaskImage, Visit, VisitImage, Expense, User
+from models import db, Property, Vehicle, Contact, PropertyContact, Document, Task, TaskImage, Visit, VisitImage, Expense, User, FinancialReport, FinancialLine
 import os
 
 app = Flask(__name__)
@@ -589,13 +589,245 @@ def expense_edit(exp_id):
     return render_template('vehicles.html', vehicles=vehs)
 
 
-# ─── INTELLIGENCE (EstateIQ) ──────────────────────────────────────────────────
+# ─── INTELLIGENCE (P&L Analysis) ─────────────────────────────────────────────
+
+NOMINAL_MAP = {
+    '4000': (None,            'income'),
+    '4010': ('450 Stanley Rd','income'),
+    '4011': ('180 Sherborne', 'income'),
+    '4012': ('210 Sherborne', 'income'),
+    '4013': ('15 St Johns',   'income'),
+    '5000': (None,            'company_expense'),
+    '5001': ('450 Stanley Rd','maintenance'),
+    '5002': ('450 Stanley Rd','rates'),
+    '5003': (None,            'company_expense'),
+    '5004': ('180 Sherborne', 'maintenance'),
+    '5005': ('180 Sherborne', 'rates'),
+    '5006': (None,            'company_expense'),
+    '5007': (None,            'company_expense'),
+    '5009': (None,            'company_expense'),
+    '5010': ('210 Sherborne', 'maintenance'),
+    '5011': ('210 Sherborne', 'rates'),
+    '5012': (None,            'company_expense'),
+    '5014': ('15 St Johns',   'rates'),
+    '5015': ('15 St Johns',   'maintenance'),
+    '5016': ('70 Fosse Park', 'maintenance'),
+    '5017': ('70 Fosse Park', 'rates'),
+    '5018': ('3 Sam Close',   'maintenance'),
+    '5019': ('3 Sam Close',   'rates'),
+    '5099': (None,            'company_expense'),
+    '7102': (None,            'company_expense'),
+    '7106': (None,            'company_expense'),
+    '7400': (None,            'company_expense'),
+    '7406': (None,            'company_expense'),
+    '7407': (None,            'company_expense'),
+    '7901': (None,            'company_expense'),
+    '7907': ('450 Stanley Rd','mortgage_interest'),
+    '7908': (None,            'company_expense'),
+    '7909': ('180 Sherborne', 'mortgage_interest'),
+    '7911': ('210 Sherborne', 'mortgage_interest'),
+    '7912': ('70 Fosse Park', 'mortgage_interest'),
+    '7913': ('3 Sam Close',   'mortgage_interest'),
+    '8200': (None,            'company_expense'),
+    '8201': (None,            'company_expense'),
+    '8202': (None,            'company_expense'),
+    '8500': (None,            'corporation_tax'),
+    '9998': (None,            'suspense'),
+}
+
+def parse_pl_csv(csv_text):
+    import csv, io, re
+    result = {'period_start': None, 'period_end': None, 'lines': []}
+    current_section = None
+    reader = csv.reader(io.StringIO(csv_text))
+    for row in reader:
+        row = [c.strip().strip('"') for c in row]
+        if not any(row):
+            continue
+        if row[0].startswith('For Period:'):
+            m = re.search(r'(\d{2}/\d{2}/\d{4}) to (\d{2}/\d{2}/\d{4})', row[0])
+            if m:
+                from datetime import datetime as _dt
+                result['period_start'] = _dt.strptime(m.group(1), '%d/%m/%Y').date()
+                result['period_end']   = _dt.strptime(m.group(2), '%d/%m/%Y').date()
+            continue
+        first = row[0].upper()
+        if 'TURNOVER' in first:
+            current_section = 'turnover'; continue
+        if 'COST OF SALES' in first:
+            current_section = 'cost_of_sales'; continue
+        if 'LESS EXPENSES' in first or first == 'EXPENSES:':
+            current_section = 'expenses'; continue
+        if first in ('GROSS PROFIT:', 'PROFIT BEFORE TAX:', 'PROFIT AFTER TAX:', 'TOTAL:', 'NET PROFIT:'):
+            continue
+        if len(row) >= 4 and row[1] and row[1].isdigit() and current_section:
+            nominal = row[1].strip()
+            description = row[2].strip()
+            amount_raw = row[3].strip().replace(',', '').replace('"', '')
+            try:
+                amount = float(amount_raw)
+            except:
+                continue
+            mapping = NOMINAL_MAP.get(nominal)
+            if mapping:
+                prop_short, line_type = mapping
+            else:
+                prop_short = None
+                line_type = 'company_expense' if current_section == 'expenses' else \
+                            'maintenance' if current_section == 'cost_of_sales' else 'income'
+            result['lines'].append({
+                'nominal': nominal, 'description': description,
+                'amount': amount, 'section': current_section,
+                'line_type': line_type, 'prop_short': prop_short,
+            })
+    return result
 
 @app.route('/intelligence')
 @login_required
 def intelligence():
-    props = Property.query.filter_by(property_type='rental', active=True).all()
-    return render_template('intelligence.html', props=props)
+    reports = FinancialReport.query.order_by(FinancialReport.period_end.desc()).all()
+    return render_template('intelligence.html', reports=reports)
+
+@app.route('/intelligence/upload', methods=['GET', 'POST'])
+@login_required
+def intelligence_upload():
+    if request.method == 'POST':
+        f = request.files.get('pl_file')
+        if not f or not f.filename.endswith('.csv'):
+            flash('Please select a CSV file', 'error')
+            return redirect(url_for('intelligence_upload'))
+        csv_text = f.read().decode('utf-8-sig')
+        parsed = parse_pl_csv(csv_text)
+        if not parsed['period_start']:
+            flash('Could not read period dates from CSV', 'error')
+            return redirect(url_for('intelligence_upload'))
+        existing = FinancialReport.query.filter_by(
+            period_start=parsed['period_start'],
+            period_end=parsed['period_end'],
+            entity='company'
+        ).first()
+        if existing:
+            db.session.delete(existing)
+            db.session.commit()
+        prop_map = {p.short_name: p.id for p in Property.query.all()}
+        report = FinancialReport(
+            entity='company',
+            period_start=parsed['period_start'],
+            period_end=parsed['period_end'],
+            filename=f.filename,
+            uploaded_by_id=current_user.id,
+            raw_csv=csv_text,
+        )
+        db.session.add(report)
+        db.session.flush()
+        for line in parsed['lines']:
+            prop_id = prop_map.get(line['prop_short']) if line['prop_short'] else None
+            db.session.add(FinancialLine(
+                report_id=report.id,
+                nominal_code=line['nominal'],
+                description=line['description'],
+                amount=line['amount'],
+                section=line['section'],
+                line_type=line['line_type'],
+                property_id=prop_id,
+            ))
+        db.session.commit()
+        flash(f"P&L uploaded: {report.period_label} — {len(parsed['lines'])} lines parsed", 'success')
+        return redirect(url_for('intelligence_report', report_id=report.id))
+    return render_template('intelligence_upload.html')
+
+@app.route('/intelligence/report/<int:report_id>')
+@login_required
+def intelligence_report(report_id):
+    report = FinancialReport.query.get_or_404(report_id)
+    all_reports = FinancialReport.query.order_by(FinancialReport.period_end.desc()).all()
+    prior = FinancialReport.query.filter(
+        FinancialReport.entity == report.entity,
+        FinancialReport.period_end < report.period_start
+    ).order_by(FinancialReport.period_end.desc()).first()
+    prop_summary = report.property_summary()
+    prior_summary = prior.property_summary() if prior else {}
+    props = []
+    for pid, figures in prop_summary.items():
+        prop = Property.query.get(pid)
+        if not prop:
+            continue
+        net = figures['income'] - figures['maintenance'] - figures['rates'] - figures['mortgage_interest']
+        gross_yield = (figures['income'] / prop.value * 100) if prop.value else 0
+        net_yield = (net / prop.value * 100) if prop.value else 0
+        prior_fig = prior_summary.get(pid, {})
+        income_change = figures['income'] - prior_fig.get('income', 0) if prior_fig else None
+        props.append({
+            'prop': prop, 'figures': figures, 'net': net,
+            'gross_yield': gross_yield, 'net_yield': net_yield,
+            'income_change': income_change,
+        })
+    props.sort(key=lambda x: x['figures']['income'], reverse=True)
+    company_lines = [l for l in report.company_lines()
+                     if l.line_type not in ('corporation_tax', 'suspense')]
+    ct_lines = [l for l in report.company_lines() if l.line_type == 'corporation_tax']
+    return render_template('intelligence_report.html',
+        report=report, all_reports=all_reports,
+        props=props, company_lines=company_lines,
+        ct_lines=ct_lines, prior=prior)
+
+@app.route('/intelligence/ai/<int:report_id>', methods=['POST'])
+@login_required
+def intelligence_ai(report_id):
+    report = FinancialReport.query.get_or_404(report_id)
+    mode = request.form.get('mode', 'full')
+    api_key = request.form.get('api_key', '').strip()
+    if not api_key:
+        return jsonify({'error': 'No API key provided'})
+    prop_summary = report.property_summary()
+    props_data = []
+    for pid, figures in prop_summary.items():
+        prop = Property.query.get(pid)
+        if not prop:
+            continue
+        net = figures['income'] - figures['maintenance'] - figures['rates'] - figures['mortgage_interest']
+        props_data.append(
+            f"- {prop.short_name}: Rent £{figures['income']:,.0f}, "
+            f"Maintenance £{figures['maintenance']:,.0f}, "
+            f"Rates/fees £{figures['rates']:,.0f}, "
+            f"Mortgage interest £{figures['mortgage_interest']:,.0f}, "
+            f"Net £{net:,.0f}, Value £{prop.value:,.0f}"
+        )
+    company_exp = sum(l.amount for l in report.company_lines() if l.line_type == 'company_expense')
+    context = f"""CHAMBERS & MORGAN LTD — P&L
+Period: {report.period_start.strftime('%-d %b %Y')} to {report.period_end.strftime('%-d %b %Y')}
+Income: £{report.total_income:,.2f} | Cost of Sales: £{report.total_cos:,.2f} | Gross Profit: £{report.gross_profit:,.2f}
+Company expenses: £{company_exp:,.2f} | Profit before tax: £{report.profit_before_tax:,.2f} | CT: £{report.corporation_tax:,.2f} | PAT: £{report.profit_after_tax:,.2f}
+
+PER-PROPERTY:
+{chr(10).join(props_data)}
+
+COMPANY EXPENSES:
+{chr(10).join(f'- {l.description}: £{l.amount:,.2f}' for l in report.company_lines() if l.line_type=='company_expense')}"""
+
+    prompts = {
+        'full': f"You are a UK property investment advisor for a small SPV portfolio. Comprehensive analysis: 1) Portfolio health 2) Best/worst performers 3) Cost efficiency 4) Mortgage burden 5) Risks and opportunities 6) Specific recommendations. British English.\n\n{context}",
+        'property': f"Analyse per-property performance. Which are most/least profitable? Cost ratios? Disproportionate costs? Specific improvement suggestions.\n\n{context}",
+        'costs': f"Analyse the cost structure. Identify anomalies, high-cost areas, efficiency opportunities. Compare maintenance across properties.\n\n{context}",
+        'mortgage': f"Analyse mortgage interest burden. What percentage of rent goes to interest per property? Is the portfolio efficiently leveraged?\n\n{context}",
+        'tax': f"Analyse the tax position. Comment on profit before tax, CT liability, and legitimate optimisations worth exploring with an accountant.\n\n{context}",
+    }
+    import urllib.request, json as _json
+    req_data = _json.dumps({
+        'model': 'claude-sonnet-4-6', 'max_tokens': 1500,
+        'messages': [{'role': 'user', 'content': prompts.get(mode, prompts['full'])}]
+    }).encode()
+    req = urllib.request.Request(
+        'https://api.anthropic.com/v1/messages', data=req_data,
+        headers={'Content-Type': 'application/json', 'x-api-key': api_key,
+                 'anthropic-version': '2023-06-01'}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = _json.loads(resp.read())
+            return jsonify({'response': data['content'][0]['text']})
+    except Exception as e:
+        return jsonify({'error': str(e)})
 
 
 # ─── VAULT (placeholder) ──────────────────────────────────────────────────────

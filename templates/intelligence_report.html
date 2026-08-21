@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+{% block title %}{{ report.period_label }}{% endblock %}
+{% block content %}
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="breadcrumb"><a href="{{ url_for('intelligence') }}">Intelligence</a> /</div>
+      <div class="page-title">{{ report.period_label }}</div>
+      <div class="page-sub">{{ report.period_start.strftime('%-d %b %Y') }} to {{ report.period_end.strftime('%-d %b %Y') }}</div>
+    </div>
+    <div class="flex">
+      {% if all_reports|length > 1 %}
+      <select onchange="location='/intelligence/report/'+this.value" style="width:auto;">
+        {% for r in all_reports %}
+        <option value="{{ r.id }}" {% if r.id==report.id %}selected{% endif %}>{{ r.period_label }}</option>
+        {% endfor %}
+      </select>
+      {% endif %}
+      <a href="{{ url_for('intelligence_upload') }}" class="btn btn-ghost">↑ Upload Another</a>
+    </div>
+  </div>
+
+  <!-- SUMMARY STRIP -->
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.5rem;box-shadow:var(--shadow);">
+    {% for label, value, colour in [
+      ('Total Income', report.total_income, 'var(--navy)'),
+      ('Cost of Sales', report.total_cos, 'var(--red)'),
+      ('Gross Profit', report.gross_profit, 'var(--green)'),
+      ('Profit Before Tax', report.profit_before_tax, 'var(--navy)' if report.profit_before_tax >= 0 else 'var(--red)'),
+      ('Profit After Tax', report.profit_after_tax, 'var(--green-ok)' if report.profit_after_tax >= 0 else 'var(--red)'),
+    ] %}
+    <div style="background:white;padding:1rem 1.1rem;">
+      <div style="font-size:.62rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600;">{{ label }}</div>
+      <div style="font-family:'Consolas',monospace;font-size:1.1rem;font-weight:600;color:{{ colour }};margin-top:.3rem;">
+        {{ '–£{:,.0f}'.format(value|abs) if value < 0 else '£{:,.0f}'.format(value) }}
+      </div>
+      {% if prior %}
+      {% set prior_map = {'Total Income': prior.total_income, 'Gross Profit': prior.gross_profit, 'Profit Before Tax': prior.profit_before_tax, 'Profit After Tax': prior.profit_after_tax, 'Cost of Sales': prior.total_cos} %}
+      {% set pval = prior_map[label] %}
+      {% set change = value - pval %}
+      <div style="font-size:.68rem;color:{{ 'var(--green-ok)' if (change > 0 and label != 'Cost of Sales') or (change < 0 and label == 'Cost of Sales') else 'var(--red)' }};">
+        {{ '+' if change >= 0 else '' }}£{{ '{:,.0f}'.format(change) }} vs prior yr
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- PER-PROPERTY BREAKDOWN -->
+  <div class="card mb-2">
+    <div class="flex-between mb-2">
+      <div class="card-title" style="margin:0;">Per-Property Performance</div>
+      {% if prior %}<div class="muted small">vs {{ prior.period_label }}</div>{% endif %}
+    </div>
+    <div class="table-wrap" style="box-shadow:none;border:none;">
+      <table>
+        <thead><tr>
+          <th>Property</th><th>Rent Income</th><th>Maintenance</th>
+          <th>Rates & Fees</th><th>Mortgage Interest</th>
+          <th>Net Contribution</th><th>Gross Yield</th><th>Net Yield</th>
+          {% if prior %}<th>Income vs Prior</th>{% endif %}
+        </tr></thead>
+        <tbody>
+        {% for p in props %}
+        <tr>
+          <td>
+            <a href="{{ url_for('property_detail', prop_id=p.prop.id) }}" style="font-weight:600;">{{ p.prop.short_name }}</a>
+            <div class="muted small">£{{ '{:,.0f}'.format(p.prop.value) }} value</div>
+          </td>
+          <td class="mono">£{{ '{:,.0f}'.format(p.figures.income) }}</td>
+          <td class="mono">£{{ '{:,.0f}'.format(p.figures.maintenance) }}</td>
+          <td class="mono">£{{ '{:,.0f}'.format(p.figures.rates) }}</td>
+          <td class="mono">£{{ '{:,.0f}'.format(p.figures.mortgage_interest) }}</td>
+          <td class="mono" style="font-weight:600;color:{{ 'var(--green-ok)' if p.net >= 0 else 'var(--red)' }};">
+            {{ '–£{:,.0f}'.format(p.net|abs) if p.net < 0 else '£{:,.0f}'.format(p.net) }}
+          </td>
+          <td class="mono small">{{ '{:.1f}'.format(p.gross_yield) }}%</td>
+          <td class="mono small" style="color:{{ 'var(--green-ok)' if p.net_yield > 3 else 'var(--amber)' if p.net_yield > 0 else 'var(--red)' }};">
+            {{ '{:.1f}'.format(p.net_yield) }}%
+          </td>
+          {% if prior %}
+          <td class="mono small" style="color:{{ 'var(--green-ok)' if p.income_change and p.income_change >= 0 else 'var(--red)' }};">
+            {% if p.income_change is not none %}{{ '+' if p.income_change >= 0 else '' }}£{{ '{:,.0f}'.format(p.income_change) }}{% else %}—{% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+        <!-- Totals row -->
+        <tr style="background:var(--cream);font-weight:600;border-top:2px solid var(--border);">
+          <td>Total</td>
+          <td class="mono">£{{ '{:,.0f}'.format(props|sum(attribute='figures.income')) }}</td>
+          <td class="mono">£{{ '{:,.0f}'.format(props|sum(attribute='figures.maintenance')) }}</td>
+          <td class="mono">£{{ '{:,.0f}'.format(props|sum(attribute='figures.rates')) }}</td>
+          <td class="mono">£{{ '{:,.0f}'.format(props|sum(attribute='figures.mortgage_interest')) }}</td>
+          <td class="mono">£{{ '{:,.0f}'.format(props|sum(attribute='net')) }}</td>
+          <td colspan="{{ 3 if prior else 2 }}"></td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- COMPANY EXPENSES -->
+  <div class="grid-2 mb-2">
+    <div class="card">
+      <div class="card-title">Company-Level Expenses</div>
+      {% for line in company_lines %}
+      <div class="flex-between" style="padding:.35rem 0;border-bottom:1px solid var(--border);font-size:.8rem;">
+        <span class="muted">{{ line.description }}</span>
+        <span class="mono">£{{ '{:,.2f}'.format(line.amount) }}</span>
+      </div>
+      {% endfor %}
+      {% if ct_lines %}
+      <div class="sep"></div>
+      {% for line in ct_lines %}
+      <div class="flex-between" style="padding:.35rem 0;font-size:.8rem;">
+        <span style="color:var(--red);">{{ line.description }}</span>
+        <span class="mono" style="color:var(--red);">–£{{ '{:,.2f}'.format(line.amount|abs) }}</span>
+      </div>
+      {% endfor %}
+      {% endif %}
+    </div>
+
+    <!-- AI INSIGHTS -->
+    <div class="card">
+      <div style="background:var(--navy);margin:-1.2rem -1.2rem 1rem;padding:.9rem 1.2rem;border-radius:8px 8px 0 0;display:flex;align-items:center;gap:.7rem;">
+        <div style="width:26px;height:26px;background:var(--green);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:.8rem;color:white;flex-shrink:0;">✦</div>
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:.9rem;color:white;">AI Insights</div>
+          <div style="font-size:.68rem;color:rgba(255,255,255,.5);">Powered by Claude · requires API key</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.8rem;">
+        {% for mode, label in [('full','Full Analysis'),('property','Per-Property'),('costs','Cost Analysis'),('mortgage','Mortgage'),('tax','Tax')] %}
+        <button onclick="runAI('{{ mode }}')" class="btn btn-ghost btn-sm" id="btn-{{ mode }}">{{ label }}</button>
+        {% endfor %}
+      </div>
+
+      <div class="form-group">
+        <label>Anthropic API Key</label>
+        <input type="password" id="aiKey" placeholder="sk-ant-..." style="font-size:.78rem;">
+      </div>
+
+      <div id="aiResult" style="font-size:.82rem;line-height:1.75;color:var(--muted);font-style:italic;min-height:80px;">
+        Select an analysis type above to generate AI insights.
+      </div>
+      <div style="font-size:.67rem;color:var(--muted);margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--border);">
+        ⚠ For planning purposes only. Not financial or tax advice.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+async function runAI(mode){
+  const key = document.getElementById('aiKey').value.trim();
+  if(!key){alert('Please enter your Anthropic API key');return;}
+  const result = document.getElementById('aiResult');
+  result.style.fontStyle='italic';
+  result.style.color='var(--muted)';
+  result.textContent='Analysing...';
+  document.querySelectorAll('[id^="btn-"]').forEach(b=>b.disabled=true);
+  try{
+    const resp = await fetch('{{ url_for("intelligence_ai", report_id=report.id) }}', {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:`mode=${mode}&api_key=${encodeURIComponent(key)}`
+    });
+    const data = await resp.json();
+    if(data.error){
+      result.textContent='Error: '+data.error;
+    } else {
+      result.style.fontStyle='normal';
+      result.style.color='var(--ink)';
+      result.style.whiteSpace='pre-wrap';
+      result.textContent=data.response;
+    }
+  } catch(e){
+    result.textContent='Request failed: '+e.message;
+  }
+  document.querySelectorAll('[id^="btn-"]').forEach(b=>b.disabled=false);
+}
+</script>
+{% endblock %}

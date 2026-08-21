@@ -521,6 +521,11 @@ def document_new():
 def document_edit(doc_id):
     doc = Document.query.get_or_404(doc_id)
     if request.method == 'POST':
+        new_entity_type = request.form.get('entity_type', doc.entity_type)
+        new_entity_id_raw = request.form.get('entity_id')
+        doc.entity_type = new_entity_type
+        if new_entity_type != 'company' and new_entity_id_raw:
+            doc.entity_id = int(new_entity_id_raw)
         doc.doc_type = request.form.get('doc_type', doc.doc_type)
         doc.category = request.form.get('category') or None
         doc.issued_date = _parse_date(request.form.get('issued_date'))
@@ -618,9 +623,18 @@ def api_properties():
 def _parse_date(s):
     if not s:
         return None
+    s = str(s).strip()
+    # HTML date inputs always return YYYY-MM-DD — parse directly
+    if len(s) == 10 and s[4] == '-' and s[7] == '-':
+        try:
+            from datetime import date as _date
+            return _date.fromisoformat(s)
+        except:
+            return None
+    # Fallback for other formats (legacy data etc)
     from dateutil import parser as dp
     try:
-        return dp.parse(str(s), dayfirst=True).date()
+        return dp.parse(s, dayfirst=True).date()
     except:
         return None
 
@@ -679,6 +693,19 @@ def create_default_users():
         db.session.add_all([chris, ash])
         db.session.commit()
         print('Default users created: chris / ash')
+
+    # Ensure Joint contact exists for visit logging
+    joint = Contact.query.filter_by(first_name='Joint', last_name='Visit').first()
+    if not joint:
+        joint = Contact(
+            first_name='Joint',
+            last_name='Visit',
+            role='director',
+            active=True,
+        )
+        db.session.add(joint)
+        db.session.commit()
+        print('Joint contact created')
 
 if __name__ == '__main__':
     with app.app_context():

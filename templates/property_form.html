@@ -26,7 +26,7 @@
         <div class="form-group">
           <label>Property Type</label>
           <select name="property_type">
-            {% for t in ['rental','personal','company'] %}
+            {% for t in ['rental','personal','company','site'] %}
             <option value="{{ t }}" {% if prop and prop.property_type==t %}selected{% endif %}>{{ t.title() }}</option>
             {% endfor %}
           </select>

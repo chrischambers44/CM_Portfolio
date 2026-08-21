@@ -7,7 +7,7 @@
       <div class="page-title">Inspection Visits</div>
       <div class="page-sub">{{ visits|length }} visits shown</div>
     </div>
-    <a href="{{ url_for('visit_new') }}" class="btn btn-gold">+ Log Visit</a>
+    <a href="{{ url_for('visit_new') }}" class="btn btn-green">+ Log Visit</a>
   </div>
   <div style="margin-bottom:1rem;">
     <select onchange="location='{{ url_for('visits') }}?property='+this.value" style="width:auto;">

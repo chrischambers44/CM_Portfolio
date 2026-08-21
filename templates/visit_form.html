@@ -1,8 +1,13 @@
 {% extends 'base.html' %}
-{% block title %}Log Visit{% endblock %}
+{% block title %}{{ 'Edit' if visit else 'Log' }} Visit{% endblock %}
 {% block content %}
 <div class="page" style="max-width:700px;">
-  <div class="page-header"><div class="page-title">Log Inspection Visit</div></div>
+  <div class="page-header">
+    <div>
+      <div class="breadcrumb"><a href="{{ url_for('visits') }}">Visits</a> /</div>
+      <div class="page-title">{{ 'Edit Visit' if visit else 'Log Inspection Visit' }}</div>
+    </div>
+  </div>
   <div class="card">
     <form method="POST">
       <div class="form-grid-2">
@@ -11,7 +16,11 @@
           <select name="property_id" required>
             <option value="">— Select property —</option>
             {% for p in props %}
-            <option value="{{ p.id }}" {% if request.args.get('property_id')==p.id|string %}selected{% endif %}>{{ p.short_name }}</option>
+            <option value="{{ p.id }}"
+              {% if visit and visit.property_id==p.id %}selected
+              {% elif request.args.get('property_id')==p.id|string %}selected{% endif %}>
+              {{ p.short_name }}
+            </option>
             {% endfor %}
           </select>
         </div>
@@ -20,33 +29,38 @@
           <select name="visited_by_id">
             <option value="">— Select —</option>
             {% for d in directors %}
-            <option value="{{ d.id }}">{{ d.display_name }}</option>
+            <option value="{{ d.id }}"
+              {% if visit and visit.visited_by_id==d.id %}selected{% endif %}>
+              {{ d.display_name }}
+            </option>
             {% endfor %}
           </select>
         </div>
         <div class="form-group">
           <label>Visit Type</label>
           <select name="visit_type">
-            <option value="routine">Routine</option>
-            <option value="special">Special</option>
-            <option value="emergency">Emergency</option>
+            {% for vt, label in [('routine','Routine'),('special','Special'),('emergency','Emergency'),('tenant_inspection','Tenant Inspection')] %}
+            <option value="{{ vt }}" {% if visit and visit.visit_type==vt %}selected{% elif not visit and vt=='routine' %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
           </select>
         </div>
         <div class="form-group">
           <label>Visit Date *</label>
-          <input type="date" name="visit_date" value="{{ today.isoformat() }}" required>
+          <input type="date" name="visit_date"
+            value="{{ visit.visit_date.isoformat() if visit and visit.visit_date else today.isoformat() }}" required>
         </div>
       </div>
       <div class="form-group">
         <label>Notes</label>
-        <textarea name="notes" rows="6" placeholder="Inspection findings, tasks raised, tenant conversation…"></textarea>
+        <textarea name="notes" rows="6" placeholder="Inspection findings, tasks raised, tenant conversation…">{{ visit.notes if visit else '' }}</textarea>
       </div>
       <div class="form-group">
-        <label><input type="checkbox" name="checked" style="width:auto;margin-right:.4rem;"> Report checked / verified</label>
+        <label><input type="checkbox" name="checked" style="width:auto;margin-right:.4rem;"
+          {% if visit and visit.checked %}checked{% endif %}> Report checked / verified</label>
       </div>
       <div class="flex" style="justify-content:flex-end;gap:.6rem;">
         <a href="{{ url_for('visits') }}" class="btn btn-ghost">Cancel</a>
-        <button type="submit" class="btn btn-gold">Save Visit</button>
+        <button type="submit" class="btn btn-green">{{ 'Save Changes' if visit else 'Save Visit' }}</button>
       </div>
     </form>
   </div>

@@ -433,13 +433,28 @@ def contact_detail(contact_id):
 def property_edit(prop_id):
     prop = Property.query.get_or_404(prop_id)
     if request.method == 'POST':
-        prop.short_name = request.form.get('short_name', prop.short_name)
-        prop.address = request.form.get('address', prop.address)
+        prop.short_name    = request.form.get('short_name', prop.short_name)
+        prop.address       = request.form.get('address', prop.address)
         prop.property_type = request.form.get('property_type', prop.property_type)
-        prop.ownership = request.form.get('ownership', prop.ownership)
-        prop.postcode = request.form.get('postcode', prop.postcode)
-        prop.region = request.form.get('region', prop.region)
-        prop.notes = request.form.get('notes', prop.notes)
+        prop.ownership     = request.form.get('ownership', prop.ownership)
+        prop.postcode      = request.form.get('postcode', prop.postcode)
+        prop.region        = request.form.get('region', prop.region)
+        prop.notes         = request.form.get('notes', prop.notes)
+        # Financial fields
+        def _f(key, default=0.0):
+            v = request.form.get(key, '').strip()
+            try: return float(v) if v else default
+            except: return default
+        def _i(key, default=25):
+            v = request.form.get(key, '').strip()
+            try: return int(v) if v else default
+            except: return default
+        prop.value    = _f('value')
+        prop.mortgage = _f('mortgage')
+        prop.rate     = _f('rate')
+        prop.term     = _i('term')
+        prop.rent     = _f('rent')
+        prop.costs    = _f('costs')
         db.session.commit()
         flash('Property updated', 'success')
         return redirect(url_for('property_detail', prop_id=prop_id))
@@ -745,31 +760,95 @@ def intelligence_report(report_id):
         FinancialReport.entity == report.entity,
         FinancialReport.period_end < report.period_start
     ).order_by(FinancialReport.period_end.desc()).first()
+
     prop_summary = report.property_summary()
     prior_summary = prior.property_summary() if prior else {}
+
     props = []
     for pid, figures in prop_summary.items():
         prop = Property.query.get(pid)
         if not prop:
             continue
         net = figures['income'] - figures['maintenance'] - figures['rates'] - figures['mortgage_interest']
-        gross_yield = (figures['income'] / prop.value * 100) if prop.value else 0
-        net_yield = (net / prop.value * 100) if prop.value else 0
+        prop_value = getattr(prop, 'value', None) or 0
+        gross_yield = (figures['income'] / prop_value * 100) if prop_value else 0
+        net_yield = (net / prop_value * 100) if prop_value else 0
         prior_fig = prior_summary.get(pid, {})
         income_change = figures['income'] - prior_fig.get('income', 0) if prior_fig else None
         props.append({
             'prop': prop, 'figures': figures, 'net': net,
+            'prop_value': prop_value,
             'gross_yield': gross_yield, 'net_yield': net_yield,
             'income_change': income_change,
         })
     props.sort(key=lambda x: x['figures']['income'], reverse=True)
+
     company_lines = [l for l in report.company_lines()
                      if l.line_type not in ('corporation_tax', 'suspense')]
     ct_lines = [l for l in report.company_lines() if l.line_type == 'corporation_tax']
+    company_expense_total = sum(l.amount for l in company_lines)
+
+    # ── BALANCE SHEET SNAPSHOT ──
+    import json as _json
+    rental_props = Property.query.filter(
+        Property.active == True,
+        Property.property_type.in_(['rental', 'site'])
+    ).order_by(Property.short_name).all()
+
+    snapshot = None
+    snapshot_json = '{}'
+    if any(getattr(p, 'value', 0) for p in rental_props):
+        rows = []
+        total_value = total_mortgage = total_rent = 0
+        for p in rental_props:
+            val = getattr(p, 'value', 0) or 0
+            mort = getattr(p, 'mortgage', 0) or 0
+            rent = getattr(p, 'rent', 0) or 0
+            rate = getattr(p, 'rate', 0) or 0
+            term = getattr(p, 'term', 25) or 25
+            costs = getattr(p, 'costs', 0) or 0
+            equity = val - mort
+            ltv = (mort / val * 100) if val else None
+            gy = (rent * 12 / val * 100) if val else None
+            total_value += val
+            total_mortgage += mort
+            total_rent += rent
+            rows.append({
+                'prop': p, 'value': val, 'mortgage': mort, 'rent': rent,
+                'rate': rate, 'term': term, 'costs': costs,
+                'equity': equity, 'ltv': ltv, 'gross_yield': gy,
+            })
+        agg_ltv = (total_mortgage / total_value * 100) if total_value else 0
+
+        class Snapshot:
+            pass
+        snapshot = Snapshot()
+        snapshot.rows = rows
+        snapshot.total_value = total_value
+        snapshot.total_mortgage = total_mortgage
+        snapshot.total_equity = total_value - total_mortgage
+        snapshot.aggregate_ltv = agg_ltv
+
+        # JSON for JavaScript projections engine
+        snapshot_json = _json.dumps({'rows': [{
+            'value': r['value'], 'mortgage': r['mortgage'],
+            'rent': r['rent'], 'rate': r['rate'],
+            'term': r['term'], 'costs': r['costs'],
+        } for r in rows]})
+
+    pl_json = _json.dumps({
+        'total_income': report.total_income,
+        'total_cos': report.total_cos,
+        'profit_before_tax': report.profit_before_tax,
+        'profit_after_tax': report.profit_after_tax,
+    })
+
     return render_template('intelligence_report.html',
         report=report, all_reports=all_reports,
         props=props, company_lines=company_lines,
-        ct_lines=ct_lines, prior=prior)
+        ct_lines=ct_lines, prior=prior,
+        snapshot=snapshot, snapshot_json=snapshot_json,
+        pl_json=pl_json, company_expense_total=company_expense_total)
 
 @app.route('/intelligence/ai/<int:report_id>', methods=['POST'])
 @login_required

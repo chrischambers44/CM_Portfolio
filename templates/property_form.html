@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}{{ 'Edit' if prop else 'Add' }} Property{% endblock %}
 {% block content %}
-<div class="page" style="max-width:700px;">
+<div class="page" style="max-width:760px;">
   <div class="page-header">
     <div>
       {% if prop %}<div class="breadcrumb"><a href="{{ url_for('properties') }}">Properties</a> / <a href="{{ url_for('property_detail', prop_id=prop.id) }}">{{ prop.short_name }}</a> /</div>{% endif %}
@@ -10,6 +10,9 @@
   </div>
   <div class="card">
     <form method="POST">
+
+      <!-- IDENTITY -->
+      <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600;margin-bottom:.6rem;padding-bottom:.4rem;border-bottom:1px solid var(--border);">Property Details</div>
       <div class="form-grid-2">
         <div class="form-group">
           <label>Short Name *</label>
@@ -21,7 +24,7 @@
         </div>
         <div class="form-group form-full">
           <label>Full Address *</label>
-          <input type="text" name="address" value="{{ prop.address if prop else '' }}" required placeholder="Street, Town, Postcode">
+          <input type="text" name="address" value="{{ prop.address if prop else '' }}" required>
         </div>
         <div class="form-group">
           <label>Property Type</label>
@@ -48,10 +51,43 @@
           </select>
         </div>
       </div>
-      <div class="form-group">
-        <label>Notes</label>
-        <textarea name="notes" rows="5" placeholder="Purchase history, tenant notes, access details…">{{ prop.notes if prop else '' }}</textarea>
+
+      <!-- FINANCIAL -->
+      <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600;margin:.8rem 0 .6rem;padding-bottom:.4rem;border-bottom:1px solid var(--border);">Financial Data</div>
+      <div style="font-size:.76rem;color:var(--muted);margin-bottom:.8rem;">Used for LTV calculations, yield analysis and projections. Enter current figures.</div>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>Current Market Value (£)</label>
+          <input type="number" name="value" value="{{ prop.value if prop and prop.value else '' }}" placeholder="250000" step="1000">
+        </div>
+        <div class="form-group">
+          <label>Outstanding Mortgage Balance (£)</label>
+          <input type="number" name="mortgage" value="{{ prop.mortgage if prop and prop.mortgage else '' }}" placeholder="180000" step="1000">
+        </div>
+        <div class="form-group">
+          <label>Mortgage Rate (%)</label>
+          <input type="number" name="rate" value="{{ prop.rate if prop and prop.rate else '' }}" placeholder="4.5" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Term Remaining (years)</label>
+          <input type="number" name="term" value="{{ prop.term if prop and prop.term else '25' }}" placeholder="25" min="1" max="40">
+        </div>
+        <div class="form-group">
+          <label>Monthly Rent (£)</label>
+          <input type="number" name="rent" value="{{ prop.rent if prop and prop.rent else '' }}" placeholder="1200" step="25">
+        </div>
+        <div class="form-group">
+          <label>Annual Running Costs (£)</label>
+          <input type="number" name="costs" value="{{ prop.costs if prop and prop.costs else '' }}" placeholder="2400" step="100">
+        </div>
       </div>
+
+      <!-- NOTES -->
+      <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600;margin:.8rem 0 .6rem;padding-bottom:.4rem;border-bottom:1px solid var(--border);">Notes</div>
+      <div class="form-group">
+        <textarea name="notes" rows="4" placeholder="Purchase history, tenant notes, access details…">{{ prop.notes if prop else '' }}</textarea>
+      </div>
+
       <div class="flex" style="justify-content:flex-end;gap:.6rem;">
         <a href="{{ url_for('property_detail', prop_id=prop.id) if prop else url_for('properties') }}" class="btn btn-ghost">Cancel</a>
         <button type="submit" class="btn btn-green">{{ 'Save Changes' if prop else 'Add Property' }}</button>

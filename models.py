@@ -1,4 +1,4 @@
-from flask_sqlalchemy import SQLAlchemy
+﻿from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, date
@@ -401,7 +401,7 @@ class FinancialLine(db.Model):
     def __repr__(self):
         return f'<FinancialLine {self.nominal_code} {self.amount}>'
 
-# ── INSTRUCTIONS ──────────────────────────────────────────────────────────────
+# â”€â”€ INSTRUCTIONS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Copy the two classes above (FinancialReport and FinancialLine) 
 # to the END of models.py on your PC, before the final blank line.
 # Then git add, commit, push and rebuild on the Pi.

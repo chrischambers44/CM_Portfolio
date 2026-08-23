@@ -458,11 +458,47 @@ def property_edit(prop_id):
         db.session.commit()
         flash('Property updated', 'success')
         return redirect(url_for('property_detail', prop_id=prop_id))
-    return render_template('property_form.html', prop=prop)
+    # Calculate average costs from P&L for suggestion
+    pl_avg_costs = None
+    pl_avg_income = None
+    reports = FinancialReport.query.filter_by(entity='company').all()
+    if reports:
+        cost_totals = []
+        income_totals = []
+        for r in reports:
+            prop_data = r.property_summary().get(prop_id)
+            if prop_data:
+                annual_costs = prop_data.get('maintenance', 0) + prop_data.get('rates', 0)
+                annual_income = prop_data.get('income', 0)
+                if annual_costs > 0:
+                    cost_totals.append(annual_costs)
+                if annual_income > 0:
+                    income_totals.append(annual_income)
+        if cost_totals:
+            pl_avg_costs = sum(cost_totals) / len(cost_totals)
+        if income_totals:
+            pl_avg_income = sum(income_totals) / len(income_totals)
+    return render_template('property_form.html', prop=prop,
+                           pl_avg_costs=pl_avg_costs, pl_avg_income=pl_avg_income)
 
-@app.route('/contacts/new', methods=['GET', 'POST'])
+@app.route('/properties/reorder', methods=['POST'])
 @login_required
-def contact_new():
+def property_reorder():
+    order = request.json.get('order', [])
+    for i, prop_id in enumerate(order):
+        p = Property.query.get(prop_id)
+        if p:
+            p.display_order = i
+    db.session.commit()
+    return jsonify({'ok': True})
+
+@app.route('/properties/<int:prop_id>/toggle-hidden', methods=['POST'])
+@login_required
+def property_toggle_hidden(prop_id):
+    prop = Property.query.get_or_404(prop_id)
+    prop.hidden = not getattr(prop, 'hidden', False)
+    db.session.commit()
+    return jsonify({'hidden': prop.hidden})
     if request.method == 'POST':
         c = Contact(
             first_name=request.form.get('first_name') or None,
@@ -756,13 +792,22 @@ def intelligence_upload():
 def intelligence_report(report_id):
     report = FinancialReport.query.get_or_404(report_id)
     all_reports = FinancialReport.query.order_by(FinancialReport.period_end.desc()).all()
+
+    # Prior year report for comparison
     prior = FinancialReport.query.filter(
         FinancialReport.entity == report.entity,
         FinancialReport.period_end < report.period_start
     ).order_by(FinancialReport.period_end.desc()).first()
 
+    # Next year report (if uploaded) for actual vs projected comparison
+    next_report = FinancialReport.query.filter(
+        FinancialReport.entity == report.entity,
+        FinancialReport.period_start > report.period_end
+    ).order_by(FinancialReport.period_start).first()
+
     prop_summary = report.property_summary()
     prior_summary = prior.property_summary() if prior else {}
+    next_summary = next_report.property_summary() if next_report else {}
 
     props = []
     for pid, figures in prop_summary.items():
@@ -790,33 +835,41 @@ def intelligence_report(report_id):
 
     # ── BALANCE SHEET SNAPSHOT ──
     import json as _json
-    rental_props = Property.query.filter(
+    all_active_props = Property.query.filter(
         Property.active == True,
-        Property.property_type.in_(['rental', 'site'])
-    ).order_by(Property.short_name).all()
+    ).order_by(Property.display_order, Property.short_name).all() \
+        if hasattr(Property, 'display_order') else \
+        Property.query.filter_by(active=True).order_by(Property.short_name).all()
+
+    # Company properties for projections (matching P&L scope)
+    company_prop_ids = set(prop_summary.keys())
 
     snapshot = None
-    snapshot_json = '{}'
-    if any(getattr(p, 'value', 0) for p in rental_props):
+    snapshot_json = 'null'
+
+    all_with_data = [p for p in all_active_props if getattr(p, 'value', 0)]
+    if all_with_data:
         rows = []
-        total_value = total_mortgage = total_rent = 0
-        for p in rental_props:
-            val = getattr(p, 'value', 0) or 0
+        total_value = total_mortgage = 0
+        for p in all_active_props:
+            val  = getattr(p, 'value', 0) or 0
             mort = getattr(p, 'mortgage', 0) or 0
             rent = getattr(p, 'rent', 0) or 0
             rate = getattr(p, 'rate', 0) or 0
             term = getattr(p, 'term', 25) or 25
-            costs = getattr(p, 'costs', 0) or 0
+            costs= getattr(p, 'costs', 0) or 0
+            hidden = getattr(p, 'hidden', False)
             equity = val - mort
             ltv = (mort / val * 100) if val else None
-            gy = (rent * 12 / val * 100) if val else None
+            gy  = (rent * 12 / val * 100) if val else None
             total_value += val
             total_mortgage += mort
-            total_rent += rent
             rows.append({
                 'prop': p, 'value': val, 'mortgage': mort, 'rent': rent,
                 'rate': rate, 'term': term, 'costs': costs,
                 'equity': equity, 'ltv': ltv, 'gross_yield': gy,
+                'is_company': p.id in company_prop_ids,
+                'hidden': hidden,
             })
         agg_ltv = (total_mortgage / total_value * 100) if total_value else 0
 
@@ -829,12 +882,55 @@ def intelligence_report(report_id):
         snapshot.total_equity = total_value - total_mortgage
         snapshot.aggregate_ltv = agg_ltv
 
-        # JSON for JavaScript projections engine
-        snapshot_json = _json.dumps({'rows': [{
-            'value': r['value'], 'mortgage': r['mortgage'],
-            'rent': r['rent'], 'rate': r['rate'],
-            'term': r['term'], 'costs': r['costs'],
-        } for r in rows]})
+        # ── PROJECTIONS BASE FROM ACTUAL P&L ──
+        # Use actual P&L figures as year 0 base for company properties
+        # Property register figures used for balance sheet / mortgage amortisation only
+        pl_base = {
+            'income': report.total_income,           # actual rental income
+            'cos': report.total_cos,                 # actual cost of sales (maint + rates)
+            'company_exp': company_expense_total,    # actual company expenses
+            'ct': report.corporation_tax,            # actual CT
+            'pat': report.profit_after_tax,          # actual PAT
+        }
+
+        # Per-property actual income for projection scaling
+        prop_income_base = {}
+        for pid, figures in prop_summary.items():
+            prop_income_base[pid] = {
+                'income': figures['income'],
+                'cos': figures['maintenance'] + figures['rates'],
+            }
+
+        # Next year actual figures for comparison column
+        next_pl = None
+        if next_report:
+            next_pl = {
+                'income': next_report.total_income,
+                'cos': next_report.total_cos,
+                'company_exp': sum(l.amount for l in next_report.company_lines()
+                                   if l.line_type not in ('corporation_tax','suspense')),
+                'pat': next_report.profit_after_tax,
+                'label': next_report.period_label,
+            }
+
+        snapshot_json = _json.dumps({
+            'pl_base': pl_base,
+            'prop_income_base': {str(k): v for k, v in prop_income_base.items()},
+            'next_pl': next_pl,
+            'base_year_label': report.period_label,
+            'base_year_end': report.period_end.year,
+            'rows': [{
+                'name': r['prop'].short_name,
+                'value': r['value'],
+                'mortgage': r['mortgage'],
+                'rent': r['rent'],
+                'rate': r['rate'],
+                'term': r['term'],
+                'costs': r['costs'],
+                'is_company': r['is_company'],
+                'hidden': r['hidden'],
+            } for r in rows],
+        })
 
     pl_json = _json.dumps({
         'total_income': report.total_income,
@@ -846,7 +942,7 @@ def intelligence_report(report_id):
     return render_template('intelligence_report.html',
         report=report, all_reports=all_reports,
         props=props, company_lines=company_lines,
-        ct_lines=ct_lines, prior=prior,
+        ct_lines=ct_lines, prior=prior, next_report=next_report,
         snapshot=snapshot, snapshot_json=snapshot_json,
         pl_json=pl_json, company_expense_total=company_expense_total)
 
